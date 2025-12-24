@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="largeCornerRoundedness">20.dp</dimen>
+    <dimen name="mediumCornerRoundedness">10.dp</dimen>
+    <dimen name="smallPadding">4.dp</dimen>
+    <dimen name="mediumPadding">8.dp</dimen>
+    <dimen name="largePadding">12.dp</dimen>
+</resources>
