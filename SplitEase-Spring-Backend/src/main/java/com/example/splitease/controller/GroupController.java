@@ -2,6 +2,7 @@ package com.example.splitease.controller;
 
 
 import com.example.splitease.requestAndResponse.CreateGroupRequest;
+import com.example.splitease.requestAndResponse.GroupDataResponse;
 import com.example.splitease.requestAndResponse.UserGroupResponse;
 import com.example.splitease.service.GroupService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,7 +26,6 @@ public class GroupController {
     @PostMapping("/group")
     public ResponseEntity<?> createGroup(@RequestBody CreateGroupRequest request, Principal principal){
 
-        System.out.println("RAW MEMBERS = " + request.getMembers());
         UUID groupId = groupService.createGroup(request, principal.getName());
 
 
@@ -38,5 +38,10 @@ public class GroupController {
     @GetMapping("/myGroups")
     public List<UserGroupResponse> getMyGroups(Principal principal) {
         return groupService.getGroupsOfUser(principal.getName());
+    }
+
+    @GetMapping("/group")
+    public ResponseEntity<GroupDataResponse> getGroupData(Principal principal){
+        return ResponseEntity.ok(groupService.getGroupScreenData(principal.getName()));
     }
 }

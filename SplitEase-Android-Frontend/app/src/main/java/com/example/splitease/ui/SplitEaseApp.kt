@@ -3,8 +3,11 @@ package com.example.splitease.ui
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -40,40 +43,47 @@ import com.example.splitease.ui.screens.ProfileDestination
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SplitEaseRoot(
-    navController: NavHostController = rememberNavController()
-) {
+fun SplitEaseRoot() {
     val authStore =
         (LocalContext.current.applicationContext as AppApplication)
             .authStore
 
-    AuthGate(
-        authStore = authStore,
-        navController = navController
-    )
+    // Collect the token as state
+    val token by authStore.tokenFlow.collectAsState(initial = "loading")
 
-    SplitEaseNavHost( navController = navController )
-}
-
-@Composable
-fun AuthGate(
-    authStore: AuthStore,
-    navController: NavHostController
-) {
-    val token by authStore.tokenFlow.collectAsState(initial = null)
-
-    LaunchedEffect(token) {
-        if (token == null) {
-            navController.navigate(LogInDestination.route) {
-                popUpTo(0) { inclusive = true }
-            }
-        } else {
-            navController.navigate(DashboardDestination.route) {
-                popUpTo(0) { inclusive = true }
-            }
+    // Show a blank screen or splash until we know if the user is logged in
+    if (token == "loading") {
+        // Simple Loading Box
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
         }
+    } else {
+        // Pass the token to the NavHost to decide where to start
+        SplitEaseNavHost(isLoggedIn = token != null)
     }
+
+//    SplitEaseNavHost( navController = navController )
 }
+
+//@Composable
+//fun AuthGate(
+//    authStore: AuthStore,
+//    navController: NavHostController
+//) {
+//    val token by authStore.tokenFlow.collectAsState(initial = null)
+//
+//    LaunchedEffect(token) {
+//        if (token == null) {
+//            navController.navigate(LogInDestination.route) {
+//                popUpTo(0) { inclusive = true }
+//            }
+//        } else {
+//            navController.navigate(DashboardDestination.route) {
+//                popUpTo(0) { inclusive = true }
+//            }
+//        }
+//    }
+//}
 
 
 sealed class BottomNavItem(

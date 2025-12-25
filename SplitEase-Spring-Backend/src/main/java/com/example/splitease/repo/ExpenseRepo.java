@@ -1,6 +1,7 @@
 package com.example.splitease.repo;
 
 import com.example.splitease.models.Expenses;
+import com.example.splitease.models.Groups;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -18,4 +19,15 @@ public interface ExpenseRepo extends JpaRepository<Expenses, UUID> {
         WHERE e.group.id = :groupId
     """)
     List<Expenses> findByGroupId(@Param("groupId") UUID groupId);
+
+    @Query("SELECT DISTINCT e FROM Expenses e " +
+            "JOIN FETCH e.group g " +
+            "JOIN FETCH e.payer p " +
+            "JOIN FETCH e.splits s " +
+            "WHERE g.id IN (SELECT gm.group.id FROM GroupMembers gm WHERE gm.user.email = :email) " +
+            "AND (p.email = :email OR s.user.email = :email) " +
+            "ORDER BY e.createdAt DESC")
+    List<Expenses> findAllActivityForUser(@Param("email") String email);
+
+    List<Expenses> findByGroup(Groups group);
 }

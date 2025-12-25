@@ -72,7 +72,8 @@ fun ProfileScreen(
     LaunchedEffect(Unit) {
         viewModel.navigateToLoginScreen.collect {
             navController.navigate(LogInDestination.route) {
-                popUpTo(DashboardDestination.route) { inclusive = true }
+                popUpTo(0) { inclusive = true }
+                launchSingleTop = true
             }
         }
     }

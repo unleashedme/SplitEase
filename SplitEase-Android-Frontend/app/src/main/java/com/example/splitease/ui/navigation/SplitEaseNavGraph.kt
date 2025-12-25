@@ -27,6 +27,7 @@ import com.example.splitease.ui.screens.ProfileScreen
 import com.example.splitease.ui.screens.RegisterDestination
 import com.example.splitease.ui.screens.RegisterScreen
 import com.example.splitease.ui.viewmodel.ActivityViewModel
+import com.example.splitease.ui.viewmodel.GroupViewModel
 
 @Composable
 fun SplitEaseNavHost(
@@ -49,7 +50,14 @@ fun SplitEaseNavHost(
             DashboardScreen(navController = navController)
         }
         composable(route = GroupDestination.route) {
-            GroupScreen(navController = navController)
+            val viewModel: GroupViewModel = viewModel(factory = GroupViewModel.Factory)
+            GroupScreen(
+                groupViewModel = viewModel,
+                navController = navController,
+                onGroupViewDetailClick = { id ->
+                    navController.navigate("${GroupDetailsDestination.route}/$id")
+                }
+            )
         }
         composable(route = ActivityDestination.route) {
             val viewModel: ActivityViewModel = viewModel(factory = ActivityViewModel.Factory)
@@ -89,10 +97,18 @@ fun SplitEaseNavHost(
         composable(
             route = GroupDetailsDestination.routeWithArgs,
             arguments = listOf(navArgument(GroupDetailsDestination.GROUP_ID_ARG){
-                type = NavType.LongType
+                type = NavType.StringType
             })
-        ) {
+        ) { backStackEntry ->
+            val parentEntry = remember(backStackEntry){
+                navController.getBackStackEntry(GroupDestination.route)
+            }
+            val sharedViewModel: GroupViewModel = viewModel(parentEntry)
+            val groupId = backStackEntry.arguments?.getString(GroupDetailsDestination.GROUP_ID_ARG)
+
             GroupDetailsScreen(
+                groupId = groupId?:"",
+                groupViewModel = sharedViewModel,
                 navigateBack = { navController.navigateUp() }
             )
         }

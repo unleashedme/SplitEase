@@ -24,4 +24,6 @@ public interface GroupMemberRepo extends JpaRepository<GroupMembers, UUID> {
     List<GroupMembers> findByGroupId(UUID groupId);
 
     List<GroupMembers> findByUserEmail(String email);
+
+    List<GroupMembers> findByGroup(Groups group);
 }

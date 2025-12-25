@@ -6,6 +6,7 @@ import com.example.splitease.dto.SettlementDto
 import com.example.splitease.dto.UserDto
 import com.example.splitease.ui.model.ActivitySummaryDto
 import com.example.splitease.ui.model.CreateGroupResponse
+import com.example.splitease.ui.model.GroupScreenDataResponse
 import com.example.splitease.ui.model.LogInRequests
 import com.example.splitease.ui.model.LogInResponse
 import com.example.splitease.ui.model.SettlementSummary
@@ -40,6 +41,9 @@ interface ApiService {
 
     @GET("activity")
     suspend fun getActivity(): ActivitySummaryDto
+
+    @GET("group")
+    suspend fun getGroupScreenData(): GroupScreenDataResponse
 
 }
 

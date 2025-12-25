@@ -20,7 +20,7 @@ data class GroupMemberDto(
     val id: String,
     val groupId: String,
     val userId: String,
-    val role: Role = Role.MEMBER,        // "admin" | "member"
+    val role: Role = Role.MEMBER,
     val joinedAt: Long
 )
 
