@@ -4,6 +4,7 @@ import com.example.splitease.dto.ExpenseDto
 import com.example.splitease.dto.GroupDto
 import com.example.splitease.dto.SettlementDto
 import com.example.splitease.dto.UserDto
+import com.example.splitease.ui.model.ActivitySummaryDto
 import com.example.splitease.ui.model.CreateGroupResponse
 import com.example.splitease.ui.model.LogInRequests
 import com.example.splitease.ui.model.LogInResponse
@@ -13,7 +14,6 @@ import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
-import retrofit2.http.Path
 
 interface ApiService {
 
@@ -37,5 +37,9 @@ interface ApiService {
 
     @POST("settlements")
     suspend fun recordSettlement( @Body request: SettlementDto )
+
+    @GET("activity")
+    suspend fun getActivity(): ActivitySummaryDto
+
 }
 

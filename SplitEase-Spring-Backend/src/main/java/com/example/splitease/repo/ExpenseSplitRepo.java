@@ -14,31 +14,7 @@ import java.util.UUID;
 
 @Repository
 public interface ExpenseSplitRepo extends JpaRepository<ExpenseSplits, UUID> {
-    @Query("""
-        SELECT es
-        FROM ExpenseSplits es
-        WHERE es.expense.group.id = :groupId
-    """)
-    List<ExpenseSplits> findByGroupId(@Param("groupId") UUID groupId);
 
-    @Query("""
-    SELECT es
-    FROM ExpenseSplits es
-    WHERE es.user.id = :fromUserId
-      AND es.expense.payer.id = :toUserId
-      AND es.expense.group.id = :groupId
-      AND es.settled = false
-    ORDER BY es.expense.createdAt ASC
-""")
-    List<ExpenseSplits> findUnsettledSplits(
-            UUID fromUserId,
-            UUID toUserId,
-            UUID groupId
-    );
-
-    List<ExpenseSplits> findAllBySettledFalse();
-
-    // Logic for Calculation: Only use splits where settled is false
     @Query("SELECT SUM(s.shareAmount) FROM ExpenseSplits s " +
             "WHERE s.user.id = :userId " +
             "AND s.expense.payer.id = :payerId " +
@@ -48,7 +24,16 @@ public interface ExpenseSplitRepo extends JpaRepository<ExpenseSplits, UUID> {
                                  @Param("payerId") UUID payerId,
                                  @Param("groupId") UUID groupId);
 
-    // Logic for Updating: Find the records to mark them true
+
     List<ExpenseSplits> findByUserAndExpense_PayerAndExpense_GroupAndSettledFalse(
             Users user, Users payer, Groups group);
+
+    @Query("SELECT COUNT(es) > 0 FROM ExpenseSplits es WHERE es.expense.group.id = :groupId AND es.settled = false")
+    boolean existsUnsettledSplits(@Param("groupId") UUID groupId);
+
+    // Navigates from ExpenseSplits -> Expenses -> Group
+    boolean existsByExpenseGroupAndSettledFalse(Groups group);
+
+    // Navigates from ExpenseSplits -> Expenses -> Group AND ExpenseSplits -> User
+    List<ExpenseSplits> findByExpenseGroupAndUserEmail(Groups group, String email);
 }

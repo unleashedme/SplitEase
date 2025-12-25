@@ -34,7 +34,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -55,13 +54,16 @@ import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.example.splitease.R
-import com.example.splitease.data.Expense
 import com.example.splitease.ui.SplitEaseBottomBar
 import com.example.splitease.ui.SplitEaseTopAppBar
+import com.example.splitease.ui.model.ActivityExpenseDto
 import com.example.splitease.ui.navigation.NavigationDestination
+import com.example.splitease.ui.viewmodel.ActivityViewModel
 import com.example.splitease.ui.viewmodel.AddExpenseViewModel
 import com.example.splitease.ui.viewmodel.GroupListViewModel
-import java.time.LocalDate
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 object ActivityDestination: NavigationDestination {
 
@@ -78,29 +80,47 @@ enum class ExpenseFilter {
 @Composable
 fun ActivityScreen(
     navController: NavHostController,
-    navigateToExpenseDetails: (Long) -> Unit,
+    onExpenseClick: (String) -> Unit,
     modifier: Modifier = Modifier,
+    activityViewModel: ActivityViewModel,
     addExpenseViewModel: AddExpenseViewModel = viewModel(factory = AddExpenseViewModel.Factory),
     groupListViewModel: GroupListViewModel = viewModel(factory = GroupListViewModel.Factory),
 ){
+
+    val groupList = groupListViewModel.groupListUiState.groups
+
+
     var query by remember { mutableStateOf("") }
     var showAddExpensePopUp by remember { mutableStateOf(false) }
-    var selectedFilter by remember { mutableStateOf(ExpenseFilter.ALL) }
-
-
-    val groups = listOf("All Groups","Trip", "Roommates", "Office", "Family")
-    var selectedGroup by remember { mutableStateOf(groups[0]) }
-    var groupListExpanded by remember { mutableStateOf(false) }
 
     val sortingPreferences = listOf("Newest First", "Oldest First", "Highest Amount", "Lowest Amount")
     var selectedSortingPreference by remember { mutableStateOf(sortingPreferences[0]) }
     var preferenceListExpanded by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        groupListViewModel.getGroupList()
+    val activityUiState = activityViewModel.activityUiState
+    var selectedFilter by remember { mutableStateOf(ExpenseFilter.ALL) }
+    var selectedGroup by remember { mutableStateOf("All Groups") }
+    var groupListExpanded by remember { mutableStateOf(false) }
+    val groupOptions = remember(activityUiState) {
+        (listOf("All Groups") + activityUiState?.expenseHistory?.map { it.groupName })
     }
 
-    val groupList = groupListViewModel.groupListUiState.groups
+
+    val filteredHistory = remember(selectedFilter, selectedGroup, activityUiState) {
+        activityUiState?.expenseHistory?.filter { expense ->
+
+            val groupMatches = selectedGroup == "All Groups" || expense.groupName == selectedGroup
+
+            val tabMatches = when (selectedFilter) {
+                ExpenseFilter.ALL -> true
+                ExpenseFilter.YOU_PAID -> expense.userWasPayer
+                ExpenseFilter.YOU_OWE -> !expense.userWasPayer && !expense.isSettled
+                ExpenseFilter.SETTLED -> expense.isSettled
+            }
+
+            groupMatches && tabMatches
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -141,6 +161,10 @@ fun ActivityScreen(
             }
             item{
                 ActivityStatsList(
+                    expenseCount = activityUiState?.totalExpensesCount?:0,
+                    totalExpense = activityUiState?.totalSpentCombined?:0.0,
+                    youPaid = activityUiState?.expensesPaidByUser?:0,
+                    settled = activityUiState?.settledExpensesCount?:0,
                     modifier = Modifier
                         .padding(dimensionResource(R.dimen.smallPadding))
                 )
@@ -252,16 +276,16 @@ fun ActivityScreen(
                                 shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),
                                 containerColor = Color.White
                             ) {
-                                groups.forEach { group ->
+                                groupOptions.forEach { group ->
                                     DropdownMenuItem(
                                         text = {
                                             Text(
-                                                text = group,
+                                                text = group.toString(),
                                                 fontSize = 16.sp
                                             )
                                         },
                                         onClick = {
-                                            selectedGroup = group
+                                            selectedGroup = group.toString()
                                             groupListExpanded = false
                                         }
                                     )
@@ -346,13 +370,15 @@ fun ActivityScreen(
                 Spacer(modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding)))
                 ExpenseFilterTabs(
                     selected = selectedFilter,
-                    onSelected = {selectedFilter = it}
+                    onSelected = { selectedFilter = it }
                 )
                 Spacer(modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding)))
             }
             item{
                 ExpenseHistory(
-                    onExpenseClick = navigateToExpenseDetails,
+                    expenseHistory = filteredHistory?:emptyList(),
+                    totalCount = activityUiState?.expenseHistory?.size?:0,
+                    onExpenseClick = onExpenseClick,
                     modifier = Modifier
                         .padding(dimensionResource(R.dimen.smallPadding))
                 )
@@ -381,12 +407,12 @@ fun ActivityScreen(
 
 @Composable
 fun ActivityStatsList(
+    expenseCount: Long,
+    totalExpense: Double,
+    youPaid: Long,
+    settled: Long,
     modifier: Modifier = Modifier
 ){
-    val expenseCount = 10
-    val totalExpense = 1000
-    val youPaid = 3
-    val settled = 5
 
     Column(
         modifier = modifier
@@ -485,34 +511,12 @@ fun ExpenseFilterTabs(
 
 @Composable
 fun ExpenseHistory(
-    onExpenseClick:(Long) -> Unit,
+    expenseHistory: List<ActivityExpenseDto>,
+    totalCount: Int,
+    onExpenseClick:(String) -> Unit,
     modifier: Modifier = Modifier
 ){
-    val noOfExpenses = 3
-    val totalNoOfExpenses = 3
-    val expenses = listOf(
-        Expense(
-            groupId = 1,
-            payerId = 1,
-            amount = 100.00,
-            description = "Dinner at Kaveri",
-            createdAt = LocalDate.now(),
-        ),
-        Expense(
-            groupId = 1,
-            payerId = 1,
-            amount = 200.00,
-            description = "Dinner at Kaveri",
-            createdAt = LocalDate.now(),
-        ),
-        Expense(
-            groupId = 1,
-            payerId = 1,
-            amount = 300.00,
-            description = "Dinner at Kaveri",
-            createdAt = LocalDate.now(),
-        )
-    )
+    val noOfExpenses = expenseHistory.size
     Card(
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -534,14 +538,14 @@ fun ExpenseHistory(
                 fontSize = 20.sp
             )
             Text(
-                text = "showing $noOfExpenses out of $totalNoOfExpenses expenses",
+                text = "showing $noOfExpenses out of $totalCount expenses",
                 fontSize = 16.sp,
                 color = Color.Gray
             )
             Spacer(modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding)))
             ExpenseList(
-                expenseList = expenses,
-                onExpenseClick = {onExpenseClick(it.expenseId)}
+                expenseList = expenseHistory,
+                onExpenseClick = onExpenseClick
             )
         }
     }
@@ -549,20 +553,18 @@ fun ExpenseHistory(
 
 @Composable
 private fun ExpenseList(
-    expenseList: List<Expense>,
-    onExpenseClick: (Expense) -> Unit,
+    expenseList: List<ActivityExpenseDto>,
+    onExpenseClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ){
     Column(
         modifier = modifier
     ) {
-        expenseList.forEach {expense ->
+        expenseList.forEach { expense ->
             ExpenseCard(
                 expense = expense,
-                groupName = "group1",
-                isSettled = true,
                 modifier = Modifier
-                    .clickable(onClick = { onExpenseClick(expense) })
+                    .clickable(onClick = { onExpenseClick(expense.expenseId) })
             )
         }
     }
@@ -571,15 +573,9 @@ private fun ExpenseList(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ExpenseCard(
-    expense: Expense,
-    groupName: String,
-    isSettled: Boolean,
+    expense: ActivityExpenseDto,
     modifier: Modifier = Modifier
 ){
-    val memberCount = 10
-    val split = expense.amount/memberCount
-    val userId = 1L
-    val payerName = "Abhinav"
 
     Card(
         colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -613,7 +609,7 @@ fun ExpenseCard(
                         text = expense.description,
                         fontSize = 20.sp
                     )
-                    if(userId == expense.payerId){
+                    if(expense.userWasPayer){
                         Card(
                             colors = CardDefaults.cardColors(Color.LightGray),
                             modifier = Modifier.padding(start=4.dp)
@@ -624,7 +620,7 @@ fun ExpenseCard(
                             )
                         }
                     }
-                    if(isSettled){
+                    if(expense.isSettled){
                         Card(
                             colors = CardDefaults.cardColors(Color(
                                 red = 80,
@@ -652,7 +648,7 @@ fun ExpenseCard(
                         tint = Color.Gray
                     )
                     Text(
-                        text = groupName,
+                        text = expense.groupName,
                         modifier = Modifier.padding(start = 4.dp),
                         color = Color.Gray
                     )
@@ -664,7 +660,7 @@ fun ExpenseCard(
                         tint = Color.Gray
                     )
                     Text(
-                        text = expense.createdAt.toString(),
+                        text = formatIsoDate(expense.date),
                         modifier = Modifier.padding(start = 4.dp),
                         color = Color.Gray
                     )
@@ -681,13 +677,13 @@ fun ExpenseCard(
                         fontSize = 20.sp
                     )
                     Text(
-                        text = "Your share: ₹ $split",
+                        text = "Your share: ₹${expense.userShare}",
                         fontSize = 12.sp,
                         color = Color.Gray
                     )
-                    if(userId!=expense.payerId){
+                    if(!expense.userWasPayer && !expense.isSettled){
                         Text(
-                            text = "You owe $payerName",
+                            text = "You owe ${expense.owesToName}",
                             fontSize = 12.sp,
                             color = Color(
                                 red = 200,
@@ -700,6 +696,13 @@ fun ExpenseCard(
             }
         }
     }
+}
+
+fun formatIsoDate(isoString: String): String {
+    val instant = Instant.parse(isoString)
+    val formatter = DateTimeFormatter.ofPattern("dd MMM yyyy")
+        .withZone(ZoneId.systemDefault())
+    return formatter.format(instant)
 }
 
 //@Preview

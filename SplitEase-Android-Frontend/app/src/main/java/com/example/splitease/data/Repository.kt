@@ -5,6 +5,7 @@ import com.example.splitease.dto.ExpenseDto
 import com.example.splitease.dto.GroupDto
 import com.example.splitease.dto.SettlementDto
 import com.example.splitease.dto.UserDto
+import com.example.splitease.ui.model.ActivitySummaryDto
 import com.example.splitease.ui.model.CreateGroupResponse
 import com.example.splitease.ui.model.LogInRequests
 import com.example.splitease.ui.model.LogInResponse
@@ -28,6 +29,8 @@ interface Repository{
 
     suspend fun recordSettlement(settlementDto: SettlementDto)
 
+    suspend fun getActivity(): ActivitySummaryDto
+
 }
 class NetworkRepository(
     private val apiService: ApiService
@@ -40,4 +43,5 @@ class NetworkRepository(
     override suspend fun getMyGroups(): List<UserGroupResponse>  = apiService.getMyGroups()
     override suspend fun getMyPayables(): List<SettlementSummary> = apiService.getPayables()
     override suspend fun recordSettlement(settlementDto: SettlementDto) = apiService.recordSettlement(settlementDto)
+    override suspend fun getActivity(): ActivitySummaryDto = apiService.getActivity()
 }

@@ -69,6 +69,7 @@ import com.example.splitease.ui.SplitEaseTopAppBar
 import com.example.splitease.ui.model.SettlementSummary
 import com.example.splitease.ui.model.UserGroupResponse
 import com.example.splitease.ui.navigation.NavigationDestination
+import com.example.splitease.ui.viewmodel.ActivityViewModel
 import com.example.splitease.ui.viewmodel.AddExpenseUiState
 import com.example.splitease.ui.viewmodel.AddExpenseViewModel
 import com.example.splitease.ui.viewmodel.CreateGroupUiState
@@ -88,20 +89,16 @@ object DashboardDestination: NavigationDestination {
 @Composable
 fun DashboardScreen(
     navController: NavHostController,
+    modifier: Modifier = Modifier,
     createGroupViewModel: CreateGroupViewModel = viewModel(factory = CreateGroupViewModel.Factory),
     addExpenseViewModel: AddExpenseViewModel = viewModel(factory = AddExpenseViewModel.Factory),
     groupListViewModel: GroupListViewModel = viewModel(factory = GroupListViewModel.Factory),
     settlementViewModel: SettlementViewModel = viewModel(factory = SettlementViewModel.Factory),
-    modifier: Modifier = Modifier
+    activityViewModel: ActivityViewModel = viewModel(factory = ActivityViewModel.Factory)
 ){
     var showCreateGroupPopUp by remember { mutableStateOf(false) }
     var showAddExpensePopUp by remember { mutableStateOf(false) }
     var showSettleUpPopUp by remember { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) {
-        groupListViewModel.getGroupList()
-        settlementViewModel.loadSettlements()
-    }
 
     val groups = groupListViewModel.groupListUiState.groups
     val settlements = settlementViewModel.settlements
@@ -275,6 +272,7 @@ fun DashboardScreen(
                 onAddExpenseClick = {
                     addExpenseViewModel.addExpense(it)
                     settlementViewModel.loadSettlements()
+                    activityViewModel.getActivity()
                     showAddExpensePopUp = false
                 },
                 onClose = { showAddExpensePopUp = false }
@@ -288,7 +286,8 @@ fun DashboardScreen(
             SettleUpPopUp(
                 settlements = settlements,
                 settlementViewModel = settlementViewModel,
-                onClose = {showSettleUpPopUp = false}
+                activityViewModel = activityViewModel,
+                onClose = { showSettleUpPopUp = false}
             )
         }
     }
@@ -1355,6 +1354,7 @@ fun AddExpensePopUp(
 fun SettleUpPopUp(
     onClose: () -> Unit,
     settlementViewModel: SettlementViewModel,
+    activityViewModel: ActivityViewModel,
     settlements: List<SettlementSummary>,
     modifier: Modifier = Modifier
 ){
@@ -1435,17 +1435,17 @@ fun SettleUpPopUp(
                     onValueChange = {},
                     readOnly = true,
                     decorationBox = { innerTextField ->
-                        if(selectedDebt == null){
-                            Text(
-                                text = "Choose who you are paying",
-                                color = Color.DarkGray
-                            )
-                        }
-                        else{
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ){
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ){
+                            if(selectedDebt == null){
+                                Text(
+                                    text = "Choose who you are paying",
+                                    color = Color.DarkGray
+                                )
+                            }
+                            else{
                                 Row(
                                     horizontalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.smallPadding)),
                                     modifier = Modifier.fillMaxWidth()
@@ -1459,23 +1459,24 @@ fun SettleUpPopUp(
                                         color = Color.DarkGray
                                     )
                                 }
-                                if (expanded) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.collapse_arrow_96),
-                                        contentDescription = "expand Icon",
-                                        tint = Color.Gray,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                } else {
-                                    Icon(
-                                        painter = painterResource(R.drawable.expand_arrow_96),
-                                        contentDescription = "expand Icon",
-                                        tint = Color.Gray,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
+                            }
+                            if (expanded) {
+                                Icon(
+                                    painter = painterResource(R.drawable.collapse_arrow_96),
+                                    contentDescription = "expand Icon",
+                                    tint = Color.Gray,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            } else {
+                                Icon(
+                                    painter = painterResource(R.drawable.expand_arrow_96),
+                                    contentDescription = "expand Icon",
+                                    tint = Color.Gray,
+                                    modifier = Modifier.size(20.dp)
+                                )
                             }
                         }
+
                         innerTextField()
                     },
                     modifier = Modifier
@@ -1564,6 +1565,7 @@ fun SettleUpPopUp(
                     ) {
                         onClose()
                         settlementViewModel.loadSettlements()
+                        activityViewModel.getActivity()
                     }
                 },
                 shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),
