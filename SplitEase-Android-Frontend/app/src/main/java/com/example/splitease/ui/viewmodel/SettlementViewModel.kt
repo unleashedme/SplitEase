@@ -20,6 +20,9 @@ class SettlementViewModel(private val repository: Repository): ViewModel(){
     var settlements by mutableStateOf<List<SettlementSummary>>(emptyList())
         private set
 
+    init {
+        loadSettlements()
+    }
     fun loadSettlements() {
         viewModelScope.launch {
             try{

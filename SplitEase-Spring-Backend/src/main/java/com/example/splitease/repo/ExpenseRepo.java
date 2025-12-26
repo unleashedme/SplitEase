@@ -13,13 +13,6 @@ import java.util.UUID;
 @Repository
 public interface ExpenseRepo extends JpaRepository<Expenses, UUID> {
 
-    @Query("""
-        SELECT e
-        FROM Expenses e
-        WHERE e.group.id = :groupId
-    """)
-    List<Expenses> findByGroupId(@Param("groupId") UUID groupId);
-
     @Query("SELECT DISTINCT e FROM Expenses e " +
             "JOIN FETCH e.group g " +
             "JOIN FETCH e.payer p " +
@@ -30,4 +23,6 @@ public interface ExpenseRepo extends JpaRepository<Expenses, UUID> {
     List<Expenses> findAllActivityForUser(@Param("email") String email);
 
     List<Expenses> findByGroup(Groups group);
+
+    List<Expenses> findByGroupIn(List<Groups> groups);
 }

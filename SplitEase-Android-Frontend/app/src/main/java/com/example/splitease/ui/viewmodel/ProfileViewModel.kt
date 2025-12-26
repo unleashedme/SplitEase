@@ -43,6 +43,7 @@ class ProfileViewModel(private val authStore: AuthStore, private val application
 
     fun logOut(){
         viewModelScope.launch(Dispatchers.IO) {
+            profileState = ProfileState.LoggedOut
             authStore.clear()
             application.resetContainer()
             _navigateToLoginScreen.emit(Unit)

@@ -12,14 +12,11 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -30,10 +27,10 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -45,8 +42,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -61,6 +56,7 @@ import com.example.splitease.ui.navigation.NavigationDestination
 import com.example.splitease.ui.viewmodel.ActivityViewModel
 import com.example.splitease.ui.viewmodel.AddExpenseViewModel
 import com.example.splitease.ui.viewmodel.GroupListViewModel
+import com.example.splitease.ui.viewmodel.SortPreference
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -89,38 +85,29 @@ fun ActivityScreen(
 
     val groupList = groupListViewModel.groupListUiState.groups
 
-
-    var query by remember { mutableStateOf("") }
     var showAddExpensePopUp by remember { mutableStateOf(false) }
-
-    val sortingPreferences = listOf("Newest First", "Oldest First", "Highest Amount", "Lowest Amount")
-    var selectedSortingPreference by remember { mutableStateOf(sortingPreferences[0]) }
-    var preferenceListExpanded by remember { mutableStateOf(false) }
 
     val activityUiState = activityViewModel.activityUiState
     var selectedFilter by remember { mutableStateOf(ExpenseFilter.ALL) }
-    var selectedGroup by remember { mutableStateOf("All Groups") }
-    var groupListExpanded by remember { mutableStateOf(false) }
-    val groupOptions = remember(activityUiState) {
-        (listOf("All Groups") + activityUiState?.expenseHistory?.map { it.groupName })
-    }
 
 
-    val filteredHistory = remember(selectedFilter, selectedGroup, activityUiState) {
+    val filteredHistory = remember(selectedFilter, activityUiState) {
         activityUiState?.expenseHistory?.filter { expense ->
 
-            val groupMatches = selectedGroup == "All Groups" || expense.groupName == selectedGroup
-
-            val tabMatches = when (selectedFilter) {
+            when (selectedFilter) {
                 ExpenseFilter.ALL -> true
                 ExpenseFilter.YOU_PAID -> expense.userWasPayer
                 ExpenseFilter.YOU_OWE -> !expense.userWasPayer && !expense.isSettled
                 ExpenseFilter.SETTLED -> expense.isSettled
             }
-
-            groupMatches && tabMatches
         }
     }
+
+    var preferenceListExpanded by remember { mutableStateOf(false) }
+    val selectedPreference by activityViewModel.sortPreference.collectAsState()
+    val sortedExpenseList by activityViewModel.sortedExpenses.collectAsState()
+
+    val commonList = sortedExpenseList.intersect((filteredHistory?: emptyList()).toSet()).toList()
 
     Scaffold(
         topBar = {
@@ -170,33 +157,6 @@ fun ActivityScreen(
                 )
             }
             item{
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = { newText: String -> query = newText },
-                    shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),
-                    placeholder = {Text(text = "Search expenses...")},
-                    leadingIcon = {
-                        Icon(
-                            painter = painterResource(R.drawable.search_96),
-                            contentDescription = "Search Icon",
-                            tint = Color.Gray,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    },
-                    keyboardActions = KeyboardActions(
-                        onDone = {/*TODO*/}
-                    ),
-                    keyboardOptions = KeyboardOptions(
-                        imeAction = ImeAction.Done,
-                        keyboardType = KeyboardType.Text
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(dimensionResource(R.dimen.smallPadding))
-                        .height(56.dp)
-                )
-            }
-            item{
                 ElevatedButton(
                     onClick = { showAddExpensePopUp = true },
                     modifier = Modifier
@@ -221,77 +181,6 @@ fun ActivityScreen(
                             fontSize = 16.sp,
                             modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding))
                         )
-                    }
-                }
-            }
-            item{
-                Row(
-                    horizontalArrangement = Arrangement
-                        .spacedBy(dimensionResource(R.dimen.smallPadding)),
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = dimensionResource(R.dimen.smallPadding))
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.filter_96),
-                        contentDescription = "filter Icon",
-                        tint = Color.Gray,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Card(
-                        modifier = Modifier
-                            .padding(4.dp)
-                            .fillMaxWidth()
-                    ){
-                        ExposedDropdownMenuBox(
-                            expanded = groupListExpanded,
-                            onExpandedChange = { groupListExpanded = !groupListExpanded }
-                        ) {
-                            Row(
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(dimensionResource(R.dimen.mediumPadding))
-                                    .size(20.dp)
-                                    .menuAnchor(
-                                        type = MenuAnchorType.PrimaryNotEditable,
-                                        enabled = true
-                                    )
-                            ) {
-                                Text(
-                                    text = selectedGroup,
-                                    color = Color.Black
-                                )
-                                Icon(
-                                    painter = painterResource(R.drawable.expand_arrow_96),
-                                    contentDescription = "Expand Icon",
-                                    tint = Color.Gray
-                                )
-                            }
-                            ExposedDropdownMenu(
-                                expanded = groupListExpanded,
-                                onDismissRequest = { groupListExpanded = false },
-                                shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),
-                                containerColor = Color.White
-                            ) {
-                                groupOptions.forEach { group ->
-                                    DropdownMenuItem(
-                                        text = {
-                                            Text(
-                                                text = group.toString(),
-                                                fontSize = 16.sp
-                                            )
-                                        },
-                                        onClick = {
-                                            selectedGroup = group.toString()
-                                            groupListExpanded = false
-                                        }
-                                    )
-                                }
-                            }
-                        }
                     }
                 }
             }
@@ -332,7 +221,7 @@ fun ActivityScreen(
                                     )
                             ) {
                                 Text(
-                                    text = selectedSortingPreference,
+                                    text = selectedPreference.displayName,
                                     color = Color.Black
                                 )
                                 Icon(
@@ -347,16 +236,16 @@ fun ActivityScreen(
                                 shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),
                                 containerColor = Color.White
                             ) {
-                                sortingPreferences.forEach { preference ->
+                                SortPreference.entries.forEach { preference ->
                                     DropdownMenuItem(
                                         text = {
                                             Text(
-                                                text = preference,
+                                                text = preference.displayName,
                                                 fontSize = 16.sp
                                             )
                                         },
                                         onClick = {
-                                            selectedSortingPreference = preference
+                                            activityViewModel.updateSortPreference(preference.displayName)
                                             preferenceListExpanded = false
                                         }
                                     )
@@ -376,7 +265,7 @@ fun ActivityScreen(
             }
             item{
                 ExpenseHistory(
-                    expenseHistory = filteredHistory?:emptyList(),
+                    expenseHistory = commonList,
                     totalCount = activityUiState?.expenseHistory?.size?:0,
                     onExpenseClick = onExpenseClick,
                     modifier = Modifier
@@ -705,41 +594,4 @@ fun formatIsoDate(isoString: String): String {
     return formatter.format(instant)
 }
 
-//@Preview
-//@Composable
-//fun ActivityStatsListPreview(){
-//    ActivityStatsList()
-//}
-
-//@Preview
-//@Composable
-//fun ExpenseCardPreview() {
-//    ExpenseCard(
-//        expense = Expense(
-//            expenseId = 1,
-//            groupId = 1,
-//            payerId = 1,
-//            amount = 100.00,
-//            description = "Dinner at Kaveri",
-//            createdAt = LocalDate.now(),
-//        ),
-//        groupName = "Group 1",
-//        isSettled = true
-//    )
-//}
-
-//@Preview
-//@Composable
-//fun ExpenseFilterTabsPreview(){
-//    ExpenseFilterTabs(
-//        selected = ExpenseFilter.ALL,
-//        onSelected = {}
-//    )
-//}
-
-//@Preview(showBackground = true)
-//@Composable
-//fun ActivityScreenPreview(){
-//    ActivityScreen()
-//}
 

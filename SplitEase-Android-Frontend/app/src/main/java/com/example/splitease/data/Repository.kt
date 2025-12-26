@@ -7,6 +7,7 @@ import com.example.splitease.dto.SettlementDto
 import com.example.splitease.dto.UserDto
 import com.example.splitease.ui.model.ActivitySummaryDto
 import com.example.splitease.ui.model.CreateGroupResponse
+import com.example.splitease.ui.model.DashboardStatResponse
 import com.example.splitease.ui.model.GroupScreenDataResponse
 import com.example.splitease.ui.model.LogInRequests
 import com.example.splitease.ui.model.LogInResponse
@@ -34,6 +35,8 @@ interface Repository{
 
     suspend fun getGroupScreenData(): GroupScreenDataResponse
 
+    suspend fun getDashboardStat(): DashboardStatResponse
+
 }
 class NetworkRepository(
     private val apiService: ApiService
@@ -48,4 +51,5 @@ class NetworkRepository(
     override suspend fun recordSettlement(settlementDto: SettlementDto) = apiService.recordSettlement(settlementDto)
     override suspend fun getActivity(): ActivitySummaryDto = apiService.getActivity()
     override suspend fun getGroupScreenData(): GroupScreenDataResponse = apiService.getGroupScreenData()
+    override suspend fun getDashboardStat(): DashboardStatResponse = apiService.getDashboardStats()
 }

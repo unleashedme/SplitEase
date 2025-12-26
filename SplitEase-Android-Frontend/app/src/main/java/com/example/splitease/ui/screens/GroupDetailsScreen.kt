@@ -95,7 +95,7 @@ fun GroupDetailsScreen(
             }
             item{
                 StatCard(
-                    cardHeading = "You paid",
+                    cardHeading = "Total Expense",
                     cardIcon = R.drawable.rupee_96,
                     cardData = "₹ ${groupDetail?.totalGroupExpense}",
                     cardDescription = "₹ ${groupDetail?.userShare} per person",
@@ -277,47 +277,6 @@ fun GroupDetailsCard(
                         )
                     }
                 }
-            }
-            Spacer(modifier = Modifier.padding(vertical = dimensionResource(R.dimen.mediumPadding)))
-            OutlinedButton(
-                onClick = {/*TODO*/ },
-                shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),
-                colors = ButtonDefaults.elevatedButtonColors(Color.White),
-                border = BorderStroke(1.dp, Color.LightGray),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.coin_in_hand_96),
-                    contentDescription = "edit Icon",
-                    tint = Color.Black,
-                    modifier = Modifier
-                        .size(16.dp)
-                )
-                Spacer(modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding)))
-                Text(
-                    text = "Settle Up",
-                    color = Color.Black
-                )
-            }
-            OutlinedButton(
-                onClick = {/*TODO*/ },
-                shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),
-                colors = ButtonDefaults.elevatedButtonColors(Color.White),
-                border = BorderStroke(1.dp, Color.LightGray),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.money_bag_rupee_96),
-                    contentDescription = "expense Icon",
-                    tint = Color.Black,
-                    modifier = Modifier
-                        .size(16.dp)
-                )
-                Spacer(modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding)))
-                Text(
-                    text = "Add Expense",
-                    color = Color.Black
-                )
             }
         }
     }

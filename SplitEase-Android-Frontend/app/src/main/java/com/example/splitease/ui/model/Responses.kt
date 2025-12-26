@@ -78,3 +78,9 @@ data class SettlementDTO(
     val date: String,
     val note: String?
 )
+
+data class DashboardStatResponse(
+    val totalUserExpense: Double,
+    val amountUserOwes: Double,
+    val amountOwedToUser: Double
+)

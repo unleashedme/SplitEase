@@ -36,4 +36,7 @@ public interface ExpenseSplitRepo extends JpaRepository<ExpenseSplits, UUID> {
 
     // Navigates from ExpenseSplits -> Expenses -> Group AND ExpenseSplits -> User
     List<ExpenseSplits> findByExpenseGroupAndUserEmail(Groups group, String email);
+
+    @Query("SELECT s FROM ExpenseSplits s WHERE s.user.email = :email")
+    List<ExpenseSplits> findAllByUserEmail(@Param("email") String email);
 }

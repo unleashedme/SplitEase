@@ -13,8 +13,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenuItem
@@ -26,10 +24,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -39,8 +37,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -55,6 +51,7 @@ import com.example.splitease.ui.model.GroupScreenDataResponse
 import com.example.splitease.ui.navigation.NavigationDestination
 import com.example.splitease.ui.viewmodel.CreateGroupViewModel
 import com.example.splitease.ui.viewmodel.GroupListViewModel
+import com.example.splitease.ui.viewmodel.GroupSortOrder
 import com.example.splitease.ui.viewmodel.GroupViewModel
 
 object GroupDestination: NavigationDestination {
@@ -73,15 +70,13 @@ fun GroupScreen(
     groupListViewModel: GroupListViewModel = viewModel(factory = GroupListViewModel.Factory),
     modifier: Modifier = Modifier
 ){
-    var query by remember { mutableStateOf("") }
     var showCreateGroupPopUp by remember { mutableStateOf(false) }
 
-
-    val sortingPreferences = listOf("Newest First", "Oldest First", "Highest Amount", "Lowest Amount")
-    var selectedSortingPreference by remember { mutableStateOf(sortingPreferences[0]) }
-    var preferenceListExpanded by remember { mutableStateOf(false) }
-
     val groupUiData = groupViewModel.groupUiState
+
+    val selectedPreference by groupViewModel.groupSortOrder.collectAsState()
+    val sortedExpenseList by groupViewModel.sortedGroupList.collectAsState()
+    var preferenceListExpanded by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -128,32 +123,6 @@ fun GroupScreen(
                 )
             }
             item{
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = { newText: String -> query = newText },
-                    shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),
-                    placeholder = {Text(text = "Search groups or members...")},
-                    leadingIcon = {
-                        Icon(
-                            painter = painterResource(R.drawable.search_96),
-                            contentDescription = "Search Icon",
-                            tint = Color.Gray,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    },
-                    keyboardActions = KeyboardActions(
-                        onDone = {}
-                    ),
-                    keyboardOptions = KeyboardOptions(
-                        imeAction = ImeAction.Done,
-                        keyboardType = KeyboardType.Text
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(dimensionResource(R.dimen.smallPadding))
-                )
-            }
-            item{
                 Row(
                     horizontalArrangement = Arrangement
                         .spacedBy(dimensionResource(R.dimen.smallPadding)),
@@ -190,7 +159,7 @@ fun GroupScreen(
                                     )
                             ) {
                                 Text(
-                                    text = selectedSortingPreference,
+                                    text = selectedPreference.displayName,
                                     color = Color.Black
                                 )
                                 Icon(
@@ -205,16 +174,16 @@ fun GroupScreen(
                                 shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),
                                 containerColor = Color.White
                             ) {
-                                sortingPreferences.forEach { preference ->
+                                GroupSortOrder.entries.forEach { preference ->
                                     DropdownMenuItem(
                                         text = {
                                             Text(
-                                                text = preference,
+                                                text = preference.displayName,
                                                 fontSize = 16.sp
                                             )
                                         },
                                         onClick = {
-                                            selectedSortingPreference = preference
+                                            groupViewModel.updateSortOrder(selectedPreference.displayName)
                                             preferenceListExpanded = false
                                         }
                                     )
@@ -250,7 +219,7 @@ fun GroupScreen(
             }
             item{
                 GroupList(
-                    groups = groupUiData?.groups?:emptyList(),
+                    groups = sortedExpenseList,
                     onGroupViewDetailClick = onGroupViewDetailClick,
                     modifier = Modifier
                         .padding(dimensionResource(R.dimen.smallPadding))
@@ -487,29 +456,3 @@ fun GroupCard(
         }
     }
 }
-
-
-//@Preview
-//@Composable
-//fun GroupStatsListPreview(){
-//    GroupStatsList()
-//}
-
-//@Preview
-//@Composable
-//fun GroupCardPreview() {
-//    GroupCard(
-//        group = Group(
-//            name = "Group 1",
-//            creatorId = 1,
-//            createdAt = 123456
-//        ),
-//        isActive = true
-//    )
-//}
-
-//@Preview(showBackground = true)
-//@Composable
-//fun GroupScreenPreview(){
-//    GroupScreen()
-//}
