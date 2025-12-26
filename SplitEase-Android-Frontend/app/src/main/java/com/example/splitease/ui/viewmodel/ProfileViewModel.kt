@@ -11,6 +11,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.splitease.datastore.AuthStore
 import com.example.splitease.ui.AppApplication
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -23,7 +24,7 @@ sealed class ProfileState{
     object LoggedOut: ProfileState()
 }
 
-class ProfileViewModel(private val authStore: AuthStore): ViewModel() {
+class ProfileViewModel(private val authStore: AuthStore, private val application: AppApplication): ViewModel() {
 
 
     val profileUiState: StateFlow<ProfileUiState> =
@@ -41,8 +42,10 @@ class ProfileViewModel(private val authStore: AuthStore): ViewModel() {
     val navigateToLoginScreen = _navigateToLoginScreen.asSharedFlow()
 
     fun logOut(){
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
+            profileState = ProfileState.LoggedOut
             authStore.clear()
+            application.resetContainer()
             _navigateToLoginScreen.emit(Unit)
         }
     }
@@ -52,7 +55,7 @@ class ProfileViewModel(private val authStore: AuthStore): ViewModel() {
             initializer {
                 val application = (this[APPLICATION_KEY] as AppApplication)
                 val authStore = application.authStore
-                ProfileViewModel(authStore = authStore)
+                ProfileViewModel(authStore = authStore, application = application)
             }
         }
     }

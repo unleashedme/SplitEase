@@ -9,7 +9,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.*;
 
 @Service
@@ -39,13 +38,13 @@ public class SettlementService {
 
         List<SettlementSummaryResponse> allPayables = new ArrayList<>();
 
-        // 1. Find all groups this user is in
+        // find all groups this user is in
         List<GroupMembers> userMemberships = groupMemberRepo.findByUserEmail(userEmail);
 
         for (GroupMembers membership : userMemberships) {
             Groups currentGroup = membership.getGroup();
 
-            // 2. Find all other members in THIS group
+            // find all other members in this group
             List<GroupMembers> allGroupMembers = groupMemberRepo.findByGroupId(currentGroup.getId());
 
             for (GroupMembers otherMemberEntry : allGroupMembers) {
@@ -54,20 +53,20 @@ public class SettlementService {
                 // Skip if comparing user to themselves
                 if (otherUser.getId().equals(currentUser.getId())) continue;
 
-                // 3. Calculate how much I owe them in this group (Unsettled only)
+                // calculate how much I owe them in this group (Unsettled only)
                 BigDecimal iOweThem = expenseSplitRepo.findTotalOwedByTo(
                         currentUser.getId(), otherUser.getId(), currentGroup.getId());
                 iOweThem = (iOweThem != null) ? iOweThem : BigDecimal.ZERO;
 
-                // 4. Calculate how much they owe me in this group (Unsettled only)
+                // calculate how much they owe me in this group (Unsettled only)
                 BigDecimal theyOweMe = expenseSplitRepo.findTotalOwedByTo(
                         otherUser.getId(), currentUser.getId(), currentGroup.getId());
                 theyOweMe = (theyOweMe != null) ? theyOweMe : BigDecimal.ZERO;
 
-                // 5. Net calculation
+                // net calculation
                 BigDecimal netBalance = iOweThem.subtract(theyOweMe);
 
-                // If positive, it's a payable for the current user
+                // if positive, it's a payable for the current user
                 if (netBalance.compareTo(BigDecimal.ZERO) > 0) {
                     allPayables.add(new SettlementSummaryResponse(
                             otherUser.getId(),
@@ -85,14 +84,14 @@ public class SettlementService {
 
     @Transactional
     public void recordSettlement(RecordSettlementRequest request, String fromUserEmail) {
-        // 1. Fetch the entities
+        // fetch the entities
         Users fromUser = userRepo.findByEmail(fromUserEmail);
         Users toUser = userRepo.findById(request.getToUserId())
                 .orElseThrow(() -> new RuntimeException("Receiver not found"));
         Groups group = groupRepo.findById(request.getGroupId())
                 .orElseThrow(() -> new RuntimeException("Group not found"));
 
-        // 2. Create and Save the Settlement record (The Audit Trail)
+        // create and save the Settlement record
         Settlements settlement = new Settlements();
         settlement.setFromUser(fromUser);
         settlement.setToUser(toUser);
@@ -101,13 +100,13 @@ public class SettlementService {
         settlement.setNote(request.getNote());
         settlementRepo.save(settlement);
 
-        // 3. THE CRITICAL STEP: Mark related splits as settled (true)
-        // Find all splits where 'fromUser' owed 'toUser' in this specific group
+        // mark related splits as settled (true), so they won't appear in getMyPayables next time
+        // find all splits where 'fromUser' owed 'toUser' in this specific group
         List<ExpenseSplits> unsettledSplits = expenseSplitRepo
                 .findByUserAndExpense_PayerAndExpense_GroupAndSettledFalse(fromUser, toUser, group);
 
         for (ExpenseSplits split : unsettledSplits) {
-            split.setSettled(true); // Now marked true, so they won't appear in getMyPayables next time
+            split.setSettled(true);
         }
 
         expenseSplitRepo.saveAll(unsettledSplits);

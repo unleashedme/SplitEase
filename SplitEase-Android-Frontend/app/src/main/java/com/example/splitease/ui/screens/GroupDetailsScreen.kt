@@ -42,11 +42,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.splitease.R
-import com.example.splitease.data.Group
-import com.example.splitease.data.Settlement
-import com.example.splitease.data.User
+import com.example.splitease.ui.model.ExpenseDTO
+import com.example.splitease.ui.model.SettlementDTO
 import com.example.splitease.ui.navigation.NavigationDestination
-import java.time.LocalDate
+import com.example.splitease.ui.viewmodel.GroupViewModel
 
 object GroupDetailsDestination : NavigationDestination {
     override val route = "group_details"
@@ -62,13 +61,17 @@ enum class GroupDetailFilter {
 
 @Composable
 fun GroupDetailsScreen(
+    groupId: String,
+    groupViewModel: GroupViewModel,
     navigateBack:() -> Unit,
     modifier: Modifier = Modifier
 ){
-    val totalSpent = 1000.0
-    val noOfMembers = 4
-    val totalOwed = 250.0
-    val noOfExpenses = 3
+
+    val groupList = groupViewModel.groupUiState?.groups?:emptyList()
+    val groupDetail = remember(groupId, groupList){
+        groupList.find { it.groupId == groupId }
+    }
+
     var selectedDetail by remember { mutableStateOf(GroupDetailFilter.EXPENSES) }
 
     Scaffold(
@@ -84,33 +87,18 @@ fun GroupDetailsScreen(
             item {
                 GroupDetailsCard(
                     navigateBack = navigateBack,
-                    group = Group(
-                        name = "Group 1",
-                        creatorId = 1,
-                        createdAt = 123456
-                    ),
+                    groupName = groupDetail?.groupName?:"",
+                    noOfMembers = groupDetail?.memberCount?:0,
                     modifier = Modifier
                         .padding(dimensionResource(R.dimen.smallPadding))
                 )
             }
             item{
                 StatCard(
-                    cardHeading = "You paid",
+                    cardHeading = "Total Expense",
                     cardIcon = R.drawable.rupee_96,
-                    cardData = "₹ $totalSpent",
-                    cardDescription = "₹ ${totalSpent/noOfMembers} per person",
-                    modifier = Modifier
-                        .padding(dimensionResource(R.dimen.smallPadding))
-                )
-            }
-            item{
-                StatCard(
-                    cardHeading = "You are owed",
-                    cardIcon = R.drawable.increase_96,
-                    cardData = "₹ $totalOwed",
-                    cardDescription = "from ${noOfMembers-1} members",
-                    cardColor = MaterialTheme.colorScheme.inverseOnSurface,
-                    cardDataColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    cardData = "₹ ${groupDetail?.totalGroupExpense}",
+                    cardDescription = "₹ ${groupDetail?.userShare} per person",
                     modifier = Modifier
                         .padding(dimensionResource(R.dimen.smallPadding))
                 )
@@ -119,7 +107,7 @@ fun GroupDetailsScreen(
                 StatCard(
                     cardHeading = "Total No. of Expenses",
                     cardIcon = R.drawable.history_96,
-                    cardData = "$noOfExpenses",
+                    cardData = "${groupDetail?.expenseCount}",
                     cardDescription = "Transactions",
                     modifier = Modifier
                         .padding(dimensionResource(R.dimen.smallPadding))
@@ -139,18 +127,21 @@ fun GroupDetailsScreen(
                 when (selectedDetail) {
                     GroupDetailFilter.EXPENSES -> {
                         GroupExpensesList(
+                            expenseList = groupDetail?.expenses?:emptyList(),
                             modifier = Modifier
                                 .padding(dimensionResource(R.dimen.smallPadding))
                         )
                     }
                     GroupDetailFilter.MEMBERS -> {
-                        GroupMembersCard(
+                        GroupMembersList(
+                            members = groupDetail?.memberNames?:emptyList(),
                             modifier = Modifier
                                 .padding(dimensionResource(R.dimen.smallPadding))
                         )
                     }
                     else -> {
-                        PaymentHistoryCard(
+                        SettlementList(
+                            settlements = groupDetail?.settlements?:emptyList(),
                             modifier = Modifier
                                 .padding(dimensionResource(R.dimen.smallPadding))
                         )
@@ -206,11 +197,11 @@ fun GroupDetailFilterTabs(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun GroupDetailsCard(
-    group: Group,
+    groupName: String,
+    noOfMembers: Int,
     navigateBack:() -> Unit,
     modifier: Modifier = Modifier
 ){
-    val noOfMembers = 4
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(Color.White),
@@ -254,7 +245,7 @@ fun GroupDetailsCard(
                     .spacedBy(dimensionResource(R.dimen.smallPadding))
             ) {
                 GroupAvatar(
-                    name = group.name,
+                    name = groupName,
                     modifier = Modifier.size(72.dp)
                 )
                 Column(
@@ -264,7 +255,7 @@ fun GroupDetailsCard(
                     verticalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = group.name,
+                        text = groupName,
                         fontSize = 28.sp
                     )
                     Spacer(modifier = Modifier.padding(4.dp))
@@ -287,47 +278,6 @@ fun GroupDetailsCard(
                     }
                 }
             }
-            Spacer(modifier = Modifier.padding(vertical = dimensionResource(R.dimen.mediumPadding)))
-            OutlinedButton(
-                onClick = {/*TODO*/ },
-                shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),
-                colors = ButtonDefaults.elevatedButtonColors(Color.White),
-                border = BorderStroke(1.dp, Color.LightGray),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.coin_in_hand_96),
-                    contentDescription = "edit Icon",
-                    tint = Color.Black,
-                    modifier = Modifier
-                        .size(16.dp)
-                )
-                Spacer(modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding)))
-                Text(
-                    text = "Settle Up",
-                    color = Color.Black
-                )
-            }
-            OutlinedButton(
-                onClick = {/*TODO*/ },
-                shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),
-                colors = ButtonDefaults.elevatedButtonColors(Color.White),
-                border = BorderStroke(1.dp, Color.LightGray),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.money_bag_rupee_96),
-                    contentDescription = "expense Icon",
-                    tint = Color.Black,
-                    modifier = Modifier
-                        .size(16.dp)
-                )
-                Spacer(modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding)))
-                Text(
-                    text = "Add Expense",
-                    color = Color.Black
-                )
-            }
         }
     }
 }
@@ -335,6 +285,7 @@ fun GroupDetailsCard(
 
 @Composable
 fun GroupExpensesList(
+    expenseList: List<ExpenseDTO>,
     modifier: Modifier = Modifier
 ){
 
@@ -370,36 +321,15 @@ fun GroupExpensesList(
                 verticalArrangement = Arrangement
                     .spacedBy(dimensionResource(R.dimen.smallPadding))
             ) {
-                GroupExpensesCard(
-                    expenseName = "Dinner at Kaveri",
-                    group = Group(
-                        name = "Group 1",
-                        creatorId = 1,
-                        createdAt = 1234567890
-                    ),
-                    date = LocalDate.now(),
-                    amount = 100.00
-                )
-                GroupExpensesCard(
-                    expenseName = "Dinner at Kaveri",
-                    group = Group(
-                        name = "Group 1",
-                        creatorId = 1,
-                        createdAt = 1234567890
-                    ),
-                    date = LocalDate.now(),
-                    amount = 100.00
-                )
-                GroupExpensesCard(
-                    expenseName = "Dinner at Kaveri",
-                    group = Group(
-                        name = "Group 1",
-                        creatorId = 1,
-                        createdAt = 1234567890
-                    ),
-                    date = LocalDate.now(),
-                    amount = 100.00
-                )
+                expenseList.forEach { expense ->
+                    GroupExpensesCard(
+                        expenseName = expense.description,
+                        date = expense.date,
+                        amount = expense.amount,
+                        split = expense.splitPerPerson,
+                        payerName = if(!expense.userPaid) expense.payerName else "You"
+                    )
+                }
             }
         }
     }
@@ -409,12 +339,11 @@ fun GroupExpensesList(
 fun GroupExpensesCard(
     modifier: Modifier = Modifier,
     expenseName: String,
-    group: Group,
-    date: LocalDate,
-    amount: Double
+    date: String,
+    amount: Double,
+    split: Double,
+    payerName: String
 ){
-    val memberCount = 10
-    val split = amount/memberCount
     Card(
         colors = CardDefaults.cardColors(containerColor = Color.White),
         modifier = modifier
@@ -451,14 +380,8 @@ fun GroupExpensesCard(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.Bottom
                 ) {
-                    Icon(
-                        painter = painterResource(R.drawable.people_96),
-                        contentDescription = "group Icon",
-                        modifier = Modifier.size(16.dp),
-                        tint = Color.Gray
-                    )
                     Text(
-                        text = group.name,
+                        text = "Paid by $payerName",
                         modifier = Modifier.padding(start = 4.dp),
                         color = Color.Gray
                     )
@@ -470,7 +393,7 @@ fun GroupExpensesCard(
                         tint = Color.Gray
                     )
                     Text(
-                        text = date.toString(),
+                        text = formatIsoDate(date),
                         modifier = Modifier.padding(start = 4.dp),
                         color = Color.Gray
                     )
@@ -499,44 +422,10 @@ fun GroupExpensesCard(
 }
 
 @Composable
-fun GroupMembersCard(
+fun GroupMembersList(
+    members: List<String>,
     modifier: Modifier = Modifier
 ){
-    val members = listOf(
-        User(
-            id = 1,
-            name = "Nirmal Bhunwal",
-            password = "123456",
-            email = "nirmal123@gmail.com",
-            upiId = "1234@oksbi",
-            phoneNumber = "9155916131"
-        ),
-        User(
-            id = 2,
-            name = "Abhinav Kumar",
-            password = "123456",
-            email = "abhinav123@gmail.com",
-            upiId = "1234@oksbi",
-            phoneNumber = "9155916131"
-        ),
-        User(
-            id = 3,
-            name = "Harsh Raj",
-            password = "123456",
-            email = "harsh123@gmail.com",
-            upiId = "1234@oksbi",
-            phoneNumber = "9155916131"
-        ),
-        User(
-            id = 4,
-            name = "Affan Hussain",
-            password = "123456",
-            email = "affan123@gmail.com",
-            upiId = "1234@oksbi",
-            phoneNumber = "9155916131"
-        )
-    )
-    val balance = listOf(100, 500, -300, -150)
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(Color.White),
@@ -558,7 +447,7 @@ fun GroupMembersCard(
                 modifier = Modifier.fillMaxWidth()
             )
             Text(
-                text = "Balances and member information.",
+                text = "Member information.",
                 color = Color.Gray,
                 textAlign = TextAlign.Start,
                 modifier = Modifier.fillMaxWidth()
@@ -569,8 +458,7 @@ fun GroupMembersCard(
             )
             for(i in members.indices){
                 MemberCard(
-                    member = members[i],
-                    balance = balance[i].toDouble(),
+                    memberName = members[i],
                     modifier = Modifier
                 )
             }
@@ -580,11 +468,9 @@ fun GroupMembersCard(
 
 @Composable
 fun MemberCard(
-    member: User,
-    balance: Double,
+    memberName: String,
     modifier: Modifier = Modifier
 ){
-    val userId = 2L
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(Color.White),
@@ -600,92 +486,27 @@ fun MemberCard(
                 .spacedBy(dimensionResource(R.dimen.mediumPadding))
         ) {
             UserAvatar(
-                name = if(userId!=member.id) member.name else "Me"
+                name = memberName
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.Start,
                 verticalAlignment = Alignment.CenterVertically
             ){
-                Column {
-                    Text(
-                        text = if(userId != member.id) member.name else "Me",
-                        fontSize = 20.sp
-                    )
-                    Text(
-                        text = if(balance>0) {
-                            "is Owed"
-                        } else if(balance==0.0) {
-                            ""
-                        }else {
-                            "is Owing"
-                        }
-                    )
-                }
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    if (balance>0) {
-                        Icon(
-                            painter = painterResource(R.drawable.increase_96),
-                            contentDescription = "increase Icon",
-                            modifier = Modifier
-                                .padding(4.dp)
-                                .size(24.dp),
-                            tint = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-                        Text(
-                            text = "₹ $balance",
-                            color = MaterialTheme.colorScheme.onSecondaryContainer,
-                            fontSize = 20.sp
-                        )
-                    }
-                    else{
-                        Icon(
-                            painter = painterResource(R.drawable.decrease_96),
-                            contentDescription = "decrease Icon",
-                            modifier = Modifier
-                                .padding(4.dp)
-                                .size(24.dp),
-                            tint = MaterialTheme.colorScheme.error
-                        )
-                        Text(
-                            text = "₹ ${-balance}",
-                            color = MaterialTheme.colorScheme.error,
-                            fontSize = 20.sp
-                        )
-                    }
-                }
+                Text(
+                    text = memberName,
+                    fontSize = 20.sp
+                )
             }
         }
     }
 }
 
 @Composable
-fun PaymentHistoryCard(
+fun SettlementList(
+    settlements: List<SettlementDTO>,
     modifier: Modifier = Modifier
 ){
-    val settlements = listOf(
-        Settlement(
-            id = 1,
-            groupId = 1,
-            fromUser = 1,
-            toUser = 2,
-            amount = 100.0,
-            paymentDescription = "Paid via GPay",
-            createdAt = LocalDate.now()
-        ),
-        Settlement(
-            id = 2,
-            groupId = 1,
-            fromUser = 2,
-            toUser = 3,
-            amount = 500.0,
-            paymentDescription = "Paid via PhonePe",
-            createdAt = LocalDate.now()
-        )
-    )
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(Color.White),
@@ -718,7 +539,12 @@ fun PaymentHistoryCard(
             )
             settlements.forEach {settlement ->
                 SettlementCard(
-                    settlement = settlement
+                    fromUser = settlement.fromUser,
+                    toUser = settlement.toUser,
+                    amount = settlement.amount,
+                    date = settlement.date,
+                    note = settlement.note ?:"",
+                    modifier = Modifier
                 )
             }
         }
@@ -727,11 +553,13 @@ fun PaymentHistoryCard(
 
 @Composable
 fun SettlementCard(
-    settlement: Settlement,
+    fromUser: String,
+    toUser: String,
+    amount: Double,
+    date: String,
+    note: String,
     modifier: Modifier = Modifier
 ){
-    val fromUser = "Nirmal"
-    val toUser = "Abhinav"
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
         modifier = modifier
@@ -786,24 +614,22 @@ fun SettlementCard(
                         tint = Color.Gray
                     )
                     Text(
-                        text = settlement.createdAt.toString(),
+                        text = formatIsoDate(date),
                         modifier = Modifier.padding(start = 4.dp),
                         color = Color.Gray
                     )
                     Spacer(modifier = Modifier.padding(horizontal = 4.dp))
-                    if(settlement.paymentDescription!=null){
-                        Icon(
-                            painter = painterResource(R.drawable.dot_96),
-                            contentDescription = "group Icon",
-                            modifier = Modifier.size(12.dp),
-                            tint = Color.Gray
-                        )
-                        Text(
-                            text = settlement.paymentDescription,
-                            modifier = Modifier.padding(start = 4.dp),
-                            color = Color.Gray
-                        )
-                    }
+                    Icon(
+                        painter = painterResource(R.drawable.dot_96),
+                        contentDescription = "group Icon",
+                        modifier = Modifier.size(12.dp),
+                        tint = Color.Gray
+                    )
+                    Text(
+                        text = note,
+                        modifier = Modifier.padding(start = 4.dp),
+                        color = Color.Gray
+                    )
                 }
                 Spacer(modifier = Modifier.padding(4.dp))
                 Row(
@@ -813,7 +639,7 @@ fun SettlementCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "₹${settlement.amount}",
+                        text = "₹${amount}",
                         fontSize = 20.sp,
                         color = MaterialTheme.colorScheme.onSecondaryContainer
                     )

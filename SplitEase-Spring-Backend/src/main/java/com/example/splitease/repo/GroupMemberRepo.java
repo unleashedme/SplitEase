@@ -2,6 +2,7 @@ package com.example.splitease.repo;
 
 import com.example.splitease.models.GroupMembers;
 import com.example.splitease.models.Groups;
+import com.example.splitease.models.Users;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -11,7 +12,6 @@ import java.util.UUID;
 
 @Repository
 public interface GroupMemberRepo extends JpaRepository<GroupMembers, UUID> {
-    long countByGroup(Groups group);
 
     @Query("""
         SELECT gm
@@ -24,4 +24,8 @@ public interface GroupMemberRepo extends JpaRepository<GroupMembers, UUID> {
     List<GroupMembers> findByGroupId(UUID groupId);
 
     List<GroupMembers> findByUserEmail(String email);
+
+    List<GroupMembers> findByGroup(Groups group);
+
+    List<GroupMembers> findByUser(Users user);
 }

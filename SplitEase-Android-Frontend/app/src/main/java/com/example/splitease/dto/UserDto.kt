@@ -13,16 +13,7 @@ data class GroupDto(
     val members: List<String>
 )
 
-enum class Role{
-    MEMBER, ADMIN
-}
-data class GroupMemberDto(
-    val id: String,
-    val groupId: String,
-    val userId: String,
-    val role: Role = Role.MEMBER,        // "admin" | "member"
-    val joinedAt: Long
-)
+
 
 data class ExpenseDto(
     val groupId: String,

@@ -6,7 +6,6 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -41,7 +40,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -62,20 +61,24 @@ import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.example.splitease.R
-import com.example.splitease.data.Expense
-import com.example.splitease.data.Group
 import com.example.splitease.ui.SplitEaseBottomBar
 import com.example.splitease.ui.SplitEaseTopAppBar
+import com.example.splitease.ui.model.ActivityExpenseDto
+import com.example.splitease.ui.model.DashboardStatResponse
+import com.example.splitease.ui.model.GroupDetailResponse
 import com.example.splitease.ui.model.SettlementSummary
 import com.example.splitease.ui.model.UserGroupResponse
 import com.example.splitease.ui.navigation.NavigationDestination
+import com.example.splitease.ui.viewmodel.ActivityViewModel
 import com.example.splitease.ui.viewmodel.AddExpenseUiState
 import com.example.splitease.ui.viewmodel.AddExpenseViewModel
 import com.example.splitease.ui.viewmodel.CreateGroupUiState
 import com.example.splitease.ui.viewmodel.CreateGroupViewModel
+import com.example.splitease.ui.viewmodel.DashboardViewModel
 import com.example.splitease.ui.viewmodel.GroupListViewModel
+import com.example.splitease.ui.viewmodel.GroupViewModel
 import com.example.splitease.ui.viewmodel.SettlementViewModel
-import java.time.LocalDate
+import com.example.splitease.ui.viewmodel.SortPreference
 
 
 object DashboardDestination: NavigationDestination {
@@ -88,23 +91,24 @@ object DashboardDestination: NavigationDestination {
 @Composable
 fun DashboardScreen(
     navController: NavHostController,
+    modifier: Modifier = Modifier,
     createGroupViewModel: CreateGroupViewModel = viewModel(factory = CreateGroupViewModel.Factory),
     addExpenseViewModel: AddExpenseViewModel = viewModel(factory = AddExpenseViewModel.Factory),
     groupListViewModel: GroupListViewModel = viewModel(factory = GroupListViewModel.Factory),
     settlementViewModel: SettlementViewModel = viewModel(factory = SettlementViewModel.Factory),
-    modifier: Modifier = Modifier
+    activityViewModel: ActivityViewModel = viewModel(factory = ActivityViewModel.Factory),
+    groupViewModel: GroupViewModel = viewModel(factory = GroupViewModel.Factory),
+    dashboardViewModel: DashboardViewModel = viewModel(factory = DashboardViewModel.Factory)
 ){
     var showCreateGroupPopUp by remember { mutableStateOf(false) }
     var showAddExpensePopUp by remember { mutableStateOf(false) }
     var showSettleUpPopUp by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        groupListViewModel.getGroupList()
-        settlementViewModel.loadSettlements()
-    }
-
     val groups = groupListViewModel.groupListUiState.groups
     val settlements = settlementViewModel.settlements
+
+    val groupDetailList = groupViewModel.groupUiState?.groups?:emptyList()
+    val activeGroups: List<GroupDetailResponse> = groupDetailList.filter { it.isActive }
 
     Scaffold(
         topBar = {
@@ -147,6 +151,8 @@ fun DashboardScreen(
             }
             item {
                 DashboardStatsList(
+                    dashboardStats = dashboardViewModel.dashboardUiState,
+                    activeGroupsCount = groupViewModel.groupUiState?.activeGroupsCount?:0,
                     modifier = Modifier
                         .padding(dimensionResource(R.dimen.smallPadding))
                 )
@@ -228,16 +234,16 @@ fun DashboardScreen(
             }
             item{
                 RecentExpenses(
+                    activityViewModel = activityViewModel,
                     viewAllExpenses = {navController.navigate(ActivityDestination.route)},
-                    onExpenseClick = {navController.navigate("${ExpenseDetailsDestination.route}/$it")},
                     modifier = Modifier
                         .padding(dimensionResource(R.dimen.smallPadding))
                 )
             }
             item{
                 ActiveGroups(
+                    activeGroupList = activeGroups,
                     viewAllGroups = {navController.navigate(GroupDestination.route)},
-                    onGroupClick = {navController.navigate("${GroupDetailsDestination.route}/$it")},
                     modifier = Modifier
                         .padding(dimensionResource(R.dimen.smallPadding))
                 )
@@ -275,6 +281,7 @@ fun DashboardScreen(
                 onAddExpenseClick = {
                     addExpenseViewModel.addExpense(it)
                     settlementViewModel.loadSettlements()
+                    activityViewModel.getActivity()
                     showAddExpensePopUp = false
                 },
                 onClose = { showAddExpensePopUp = false }
@@ -288,7 +295,8 @@ fun DashboardScreen(
             SettleUpPopUp(
                 settlements = settlements,
                 settlementViewModel = settlementViewModel,
-                onClose = {showSettleUpPopUp = false}
+                activityViewModel = activityViewModel,
+                onClose = { showSettleUpPopUp = false}
             )
         }
     }
@@ -296,12 +304,10 @@ fun DashboardScreen(
 
 @Composable
 fun DashboardStatsList(
+    dashboardStats: DashboardStatResponse?,
+    activeGroupsCount: Long,
     modifier: Modifier = Modifier
 ){
-    val expense = 1000.00
-    val group = 3
-    val owed = 200.00
-    val owe = 300.00
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -317,14 +323,14 @@ fun DashboardStatsList(
             StatCard(
                 cardHeading = "Total Expenses",
                 cardIcon = R.drawable.rupee_96,
-                cardData = "₹ $expense",
+                cardData = "₹ ${dashboardStats?.totalUserExpense?:0.0}",
                 cardDescription = "Across All Groups",
                 modifier = Modifier.weight(1f)
             )
             StatCard(
                 cardHeading = "Active Groups",
                 cardIcon = R.drawable.people_96,
-                cardData = "$group",
+                cardData = "$activeGroupsCount",
                 cardDescription = "Sharing Expenses",
                 modifier = Modifier.weight(1f)
             )
@@ -337,7 +343,7 @@ fun DashboardStatsList(
             StatCard(
                 cardHeading = "You Owe",
                 cardIcon = R.drawable.decrease_96,
-                cardData = "₹ $owed",
+                cardData = "₹ ${dashboardStats?.amountUserOwes?:0.0}",
                 cardDescription = "To Settle",
                 cardColor = MaterialTheme.colorScheme.errorContainer,
                 cardDataColor = MaterialTheme.colorScheme.onErrorContainer,
@@ -346,7 +352,7 @@ fun DashboardStatsList(
             StatCard(
                 cardHeading = "You Are Owed",
                 cardIcon = R.drawable.increase_96,
-                cardData = "₹ $owe",
+                cardData = "₹ ${dashboardStats?.amountOwedToUser?:0.0}",
                 cardDescription = "Across All Groups",
                 cardColor = MaterialTheme.colorScheme.secondaryContainer,
                 cardDataColor = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -423,41 +429,13 @@ fun StatCard(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RecentExpenses(
+    activityViewModel: ActivityViewModel,
     viewAllExpenses: () -> Unit,
-    onExpenseClick: (Long) -> Unit,
     modifier: Modifier = Modifier
 ){
-    val groups = listOf("All Groups","Trip", "Roommates", "Office", "Family")
-    var selectedGroup by remember { mutableStateOf(groups[0]) }
-    var groupListExpanded by remember { mutableStateOf(false) }
-
-    val sortingPreferences = listOf("Newest First", "Oldest First", "Highest Amount", "Lowest Amount")
-    var selectedSortingPreference by remember { mutableStateOf(sortingPreferences[0]) }
     var preferenceListExpanded by remember { mutableStateOf(false) }
-
-    val expenses = listOf(
-        Expense(
-            description = "Dinner with friends",
-            amount = 100.00,
-            createdAt = LocalDate.now(),
-            groupId = 1,
-            payerId = 1
-        ),
-        Expense(
-            description = "Dinner with friends",
-            amount = 100.00,
-            createdAt = LocalDate.now(),
-            groupId = 1,
-            payerId = 1
-        ),
-        Expense(
-            description = "Dinner with friends",
-            amount = 100.00,
-            createdAt = LocalDate.now(),
-            groupId = 1,
-            payerId = 1
-        )
-    )
+    val selectedPreference by activityViewModel.sortPreference.collectAsState()
+    val sortedExpenseList by activityViewModel.sortedExpenses.collectAsState()
 
 
     Card(
@@ -492,73 +470,6 @@ fun RecentExpenses(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Icon(
-                    painter = painterResource(R.drawable.filter_96),
-                    contentDescription = "filter Icon",
-                    tint = Color.Gray,
-                    modifier = Modifier.size(20.dp)
-                )
-                Card(
-                    modifier = Modifier
-                        .padding(4.dp)
-                        .fillMaxWidth()
-                ){
-                    ExposedDropdownMenuBox(
-                        expanded = groupListExpanded,
-                        onExpandedChange = { groupListExpanded = !groupListExpanded }
-                    ) {
-                        Row(
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(dimensionResource(R.dimen.mediumPadding))
-                                .size(20.dp)
-                                .menuAnchor(
-                                    type = MenuAnchorType.PrimaryNotEditable,
-                                    enabled = true
-                                )
-                        ) {
-                            Text(
-                                text = selectedGroup,
-                                color = Color.Black
-                            )
-                            Icon(
-                                painter = painterResource(R.drawable.expand_arrow_96),
-                                contentDescription = "Expand Icon",
-                                tint = Color.Gray
-                            )
-                        }
-                        ExposedDropdownMenu(
-                            expanded = groupListExpanded,
-                            onDismissRequest = { groupListExpanded = false },
-                            shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),
-                            containerColor = Color.White
-                        ) {
-                            groups.forEach { group ->
-                                DropdownMenuItem(
-                                    text = {
-                                        Text(
-                                            text = group,
-                                            fontSize = 16.sp
-                                        )
-                                    },
-                                    onClick = {
-                                        selectedGroup = group
-                                        groupListExpanded = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-            Row(
-                horizontalArrangement = Arrangement
-                    .spacedBy(dimensionResource(R.dimen.smallPadding)),
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(
                     painter = painterResource(R.drawable.sorting_arrows_96),
                     contentDescription = "sorting Icon",
                     tint = Color.Gray,
@@ -586,7 +497,7 @@ fun RecentExpenses(
                                 )
                         ) {
                             Text(
-                                text = selectedSortingPreference,
+                                text = selectedPreference.displayName,
                                 color = Color.Black
                             )
                             Icon(
@@ -601,16 +512,16 @@ fun RecentExpenses(
                             shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),
                             containerColor = Color.White
                         ) {
-                            sortingPreferences.forEach { preference ->
+                            SortPreference.entries.forEach { preference ->
                                 DropdownMenuItem(
                                     text = {
                                         Text(
-                                            text = preference,
+                                            text = preference.displayName,
                                             fontSize = 16.sp
                                         )
                                     },
                                     onClick = {
-                                        selectedSortingPreference = preference
+                                        activityViewModel.updateSortPreference(preference.displayName)
                                         preferenceListExpanded = false
                                     }
                                 )
@@ -622,8 +533,7 @@ fun RecentExpenses(
             Spacer(modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding)))
 
             RecentExpensesList(
-                expenseList = expenses,
-                onExpenseClick = { onExpenseClick(it.expenseId) }
+                expenseList = sortedExpenseList
             )
 
             FilledIconButton(
@@ -652,21 +562,19 @@ fun RecentExpenses(
 
 @Composable
 private fun RecentExpensesList(
-    expenseList: List<Expense>,
-    onExpenseClick: (Expense) -> Unit,
+    expenseList: List<ActivityExpenseDto>,
     modifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier
     ) {
-        expenseList.forEach {expense ->
+        expenseList.take(4).forEach {expense ->
             RecentExpensesCard(
                 expenseName = expense.description,
                 amount =  expense.amount,
-                date = expense.createdAt,
-                groupName = "group1",
-                modifier = Modifier
-                    .clickable(onClick = { onExpenseClick(expense) })
+                date = expense.date,
+                groupName = expense.groupName,
+                userSplit = expense.userShare
             )
         }
     }
@@ -677,11 +585,10 @@ fun RecentExpensesCard(
     modifier: Modifier = Modifier,
     expenseName: String,
     groupName: String,
-    date: LocalDate,
-    amount: Double
+    date: String,
+    amount: Double,
+    userSplit: Double
 ){
-    val memberCount = 10
-    val split = amount/memberCount
     Card(
         colors = CardDefaults.cardColors(containerColor = Color.White),
         modifier = modifier
@@ -737,7 +644,7 @@ fun RecentExpensesCard(
                         tint = Color.Gray
                     )
                     Text(
-                        text = date.toString(),
+                        text = formatIsoDate(date),
                         modifier = Modifier.padding(start = 4.dp),
                         color = Color.Gray
                     )
@@ -755,7 +662,7 @@ fun RecentExpensesCard(
                     )
                     Spacer(modifier = Modifier.padding(4.dp))
                     Text(
-                        text = "₹$split per person",
+                        text = "₹$userSplit per person",
                         fontSize = 16.sp,
                         color = Color.Gray
                     )
@@ -766,29 +673,10 @@ fun RecentExpensesCard(
 }
 @Composable
 fun ActiveGroups(
+    activeGroupList: List<GroupDetailResponse>,
     viewAllGroups:() -> Unit,
-    onGroupClick: (Long) -> Unit,
     modifier: Modifier = Modifier
 ){
-    val groups = listOf(
-        Group(
-            name = "Group 1",
-            creatorId = 1,
-            createdAt = 1234567890
-        ),
-
-        Group(
-            name = "Group 1",
-            creatorId = 1,
-            createdAt = 1234567890
-        ),
-
-        Group(
-            name = "Group 1",
-            creatorId = 1,
-            createdAt = 1234567890
-        )
-    )
     Card(shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.elevatedCardElevation(),
@@ -813,8 +701,7 @@ fun ActiveGroups(
                 color = Color.Gray
             )
             ActiveGroupList(
-                groupList = groups,
-                onGroupClick = { onGroupClick(it.groupId) }
+                groupList = activeGroupList
             )
             FilledIconButton(
                 onClick = viewAllGroups,
@@ -842,18 +729,19 @@ fun ActiveGroups(
 
 @Composable
 private fun ActiveGroupList(
-    groupList: List<Group>,
-    onGroupClick: (Group) -> Unit,
+    groupList: List<GroupDetailResponse>,
     modifier: Modifier = Modifier
 ){
     Column(
         modifier = modifier
     ) {
-        groupList.forEach { group ->
+        groupList.take(4).forEach { group ->
             ActiveGroupsCard(
-                group = group,
+                groupName = group.groupName,
+                noOfMembers = group.memberCount,
+                totalExpense = group.totalGroupExpense,
+                userShare = group.userShare,
                 modifier = Modifier
-                    .clickable(onClick = { onGroupClick(group) })
             )
         }
     }
@@ -861,12 +749,12 @@ private fun ActiveGroupList(
 
 @Composable
 fun ActiveGroupsCard(
-    group: Group,
+    groupName: String,
+    noOfMembers: Int,
+    totalExpense: Double,
+    userShare: Double,
     modifier: Modifier = Modifier
 ){
-    val members = 4
-    val totalGroupExpense = 100.00
-    val yourShare = 10.00
     Card(
         colors = CardDefaults.cardColors(containerColor = Color.White),
         modifier = modifier
@@ -885,17 +773,17 @@ fun ActiveGroupsCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
             ){
-                GroupAvatar(name = group.name, modifier = Modifier.padding(end = 4.dp))
+                GroupAvatar(name = groupName, modifier = Modifier.padding(end = 4.dp))
                 Column(
                     modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding))
                 ) {
                     Text(
-                        text = group.name,
+                        text = groupName,
                         textAlign = TextAlign.Start,
                         fontSize = 20.sp
                     )
                     Text(
-                        text = "$members members",
+                        text = "$noOfMembers members",
                         color = Color.Gray,
                         textAlign = TextAlign.Start,
                         fontSize = 16.sp
@@ -929,7 +817,7 @@ fun ActiveGroupsCard(
                             modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding))
                         )
                         Text(
-                            text = "₹$totalGroupExpense",
+                            text = "₹$totalExpense",
                             fontWeight = FontWeight.Bold,
                             fontSize = 20.sp,
                             modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding))
@@ -959,7 +847,7 @@ fun ActiveGroupsCard(
                             modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding))
                         )
                         Text(
-                            text = "₹$yourShare",
+                            text = "₹$userShare",
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding))
@@ -1355,6 +1243,7 @@ fun AddExpensePopUp(
 fun SettleUpPopUp(
     onClose: () -> Unit,
     settlementViewModel: SettlementViewModel,
+    activityViewModel: ActivityViewModel,
     settlements: List<SettlementSummary>,
     modifier: Modifier = Modifier
 ){
@@ -1435,17 +1324,17 @@ fun SettleUpPopUp(
                     onValueChange = {},
                     readOnly = true,
                     decorationBox = { innerTextField ->
-                        if(selectedDebt == null){
-                            Text(
-                                text = "Choose who you are paying",
-                                color = Color.DarkGray
-                            )
-                        }
-                        else{
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ){
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ){
+                            if(selectedDebt == null){
+                                Text(
+                                    text = "Choose who you are paying",
+                                    color = Color.DarkGray
+                                )
+                            }
+                            else{
                                 Row(
                                     horizontalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.smallPadding)),
                                     modifier = Modifier.fillMaxWidth()
@@ -1459,23 +1348,24 @@ fun SettleUpPopUp(
                                         color = Color.DarkGray
                                     )
                                 }
-                                if (expanded) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.collapse_arrow_96),
-                                        contentDescription = "expand Icon",
-                                        tint = Color.Gray,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                } else {
-                                    Icon(
-                                        painter = painterResource(R.drawable.expand_arrow_96),
-                                        contentDescription = "expand Icon",
-                                        tint = Color.Gray,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
+                            }
+                            if (expanded) {
+                                Icon(
+                                    painter = painterResource(R.drawable.collapse_arrow_96),
+                                    contentDescription = "expand Icon",
+                                    tint = Color.Gray,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            } else {
+                                Icon(
+                                    painter = painterResource(R.drawable.expand_arrow_96),
+                                    contentDescription = "expand Icon",
+                                    tint = Color.Gray,
+                                    modifier = Modifier.size(20.dp)
+                                )
                             }
                         }
+
                         innerTextField()
                     },
                     modifier = Modifier
@@ -1564,6 +1454,7 @@ fun SettleUpPopUp(
                     ) {
                         onClose()
                         settlementViewModel.loadSettlements()
+                        activityViewModel.getActivity()
                     }
                 },
                 shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),
@@ -1623,47 +1514,3 @@ fun GroupAvatar(
         )
     }
 }
-
-//@Preview(showBackground = true)
-//@Composable
-//fun DashboardStatsListPreview(){
-//    DashboardStatsList()
-//}
-
-//@Preview
-//@Composable
-//fun RecentExpensesPreview() {
-//    RecentExpenses()
-//}
-
-
-//@Preview
-//@Composable
-//fun ActiveGroupsPreview(){
-//    ActiveGroups()
-//}
-
-
-//@Preview
-//@Composable
-//fun CreateGroupCardPreview(){
-//    CreateGroupCard()
-//}
-
-//@Preview
-//@Composable
-//fun AddExpenseCardPreview(){
-//    AddExpenseCard()
-//}
-
-//@Preview
-//@Composable
-//fun settleUpCardPreview(){
-//    settleUpCard()
-//}
-
-//@Preview(showBackground = true)
-//@Composable
-//fun DashboardScreenPreview(){
-//    DashboardScreen()
-//}

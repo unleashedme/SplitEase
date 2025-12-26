@@ -11,25 +11,25 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.splitease.data.Repository
 import com.example.splitease.ui.AppApplication
-import com.example.splitease.ui.model.UserGroupResponse
+import com.example.splitease.ui.model.DashboardStatResponse
 import kotlinx.coroutines.launch
 
-class GroupListViewModel(private val repository: Repository): ViewModel(){
+class DashboardViewModel(private val repository: Repository): ViewModel() {
 
-    var groupListUiState by mutableStateOf(GroupListUiState())
+    var dashboardUiState by mutableStateOf<DashboardStatResponse?>(null)
         private set
 
     init {
-        getGroupList()
+        getDashboardStat()
     }
-    fun getGroupList(){
+
+    fun getDashboardStat(){
         viewModelScope.launch {
             try {
-                val groups = repository.getMyGroups()
-                groupListUiState = groupListUiState.copy(groups = groups)
-                println("GROUP LIST called is Successfully")
-            }catch(e: Exception){
-                println("GROUP LIST: exception = ${e::class.java} ${e.message}")
+                dashboardUiState = repository.getDashboardStat()
+                println("Dashboard: getDashboardStat success")
+            }catch (e: Exception){
+                println("Dashboard: exception = ${e::class.java} ${e.message}")
             }
         }
     }
@@ -39,12 +39,9 @@ class GroupListViewModel(private val repository: Repository): ViewModel(){
             initializer {
                 val application = (this[APPLICATION_KEY] as AppApplication)
                 val repository = application.container.repository
-                GroupListViewModel(repository = repository)
+                DashboardViewModel(repository = repository)
             }
         }
     }
 }
 
-data class GroupListUiState(
-    val groups: List<UserGroupResponse> = emptyList()
-)

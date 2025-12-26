@@ -14,4 +14,7 @@ class AppApplication: Application() {
         authStore = AuthStore(this)
         container = DefaultAppContainer(authStore)
     }
+    fun resetContainer() {
+        container = DefaultAppContainer(authStore)
+    }
 }

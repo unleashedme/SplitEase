@@ -27,6 +27,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,10 +39,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.splitease.R
-import com.example.splitease.data.Expense
-import com.example.splitease.data.User
+import com.example.splitease.ui.model.ActivityExpenseDto
 import com.example.splitease.ui.navigation.NavigationDestination
-import java.time.LocalDate
+import com.example.splitease.ui.viewmodel.ActivityViewModel
 
 object ExpenseDetailsDestination : NavigationDestination {
     override val route = "expense_details"
@@ -53,9 +53,18 @@ object ExpenseDetailsDestination : NavigationDestination {
 
 @Composable
 fun ExpenseDetailsScreen(
+    expenseId: String,
+    activityViewModel: ActivityViewModel,
     navigateBack:() -> Unit,
     modifier: Modifier = Modifier
 ){
+
+    val expenseList = activityViewModel.activityUiState?.expenseHistory?:(emptyList())
+    val expense = remember(expenseId, expenseList){
+        expenseList.find { it.expenseId == expenseId }
+    }
+
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background
     ){innerPadding ->
@@ -67,34 +76,23 @@ fun ExpenseDetailsScreen(
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             item {
-                ExpenseDetailCard(
-                    navigateBack = navigateBack,
-                    expense = Expense(
-                        expenseId = 1,
-                        groupId = 1,
-                        payerId = 2,
-                        amount = 100.00,
-                        description = "Dinner at Kaveri",
-                        createdAt = LocalDate.now(),
-                    ),
-                    groupName = "Group 1",
-                    modifier = Modifier
-                        .padding(dimensionResource(R.dimen.smallPadding))
-                )
+                if(expense!=null){
+                    ExpenseDetailCard(
+                        navigateBack = navigateBack,
+                        expense = expense,
+                        modifier = Modifier
+                            .padding(dimensionResource(R.dimen.smallPadding))
+                    )
+                }
             }
             item {
-                SplitDetailCard(
-                    expense = Expense(
-                        expenseId = 1,
-                        groupId = 1,
-                        payerId = 2,
-                        amount = 100.00,
-                        description = "Dinner at Kaveri",
-                        createdAt = LocalDate.now(),
-                    ),
-                    modifier = Modifier
-                        .padding(dimensionResource(R.dimen.smallPadding))
-                )
+                if(expense!=null){
+                    SplitDetailCard(
+                        expense = expense,
+                        modifier = Modifier
+                            .padding(dimensionResource(R.dimen.smallPadding))
+                    )
+                }
             }
         }
     }
@@ -105,12 +103,9 @@ fun ExpenseDetailsScreen(
 @Composable
 fun ExpenseDetailCard(
     navigateBack: () -> Unit,
-    expense: Expense,
-    groupName: String,
+    expense: ActivityExpenseDto,
     modifier: Modifier = Modifier
 ){
-    val payerName = "Abhinav"
-    val userId = 2L
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(Color.White),
@@ -179,7 +174,7 @@ fun ExpenseDetailCard(
                             tint = Color.Gray
                         )
                         Text(
-                            text = groupName,
+                            text = expense.groupName,
                             modifier = Modifier.padding(start = 4.dp),
                             color = Color.Gray,
                             fontSize = 16.sp
@@ -192,7 +187,7 @@ fun ExpenseDetailCard(
                             tint = Color.Gray
                         )
                         Text(
-                            text = expense.createdAt.toString(),
+                            text = formatIsoDate(expense.date),
                             modifier = Modifier.padding(start = 4.dp),
                             color = Color.Gray,
                             fontSize = 16.sp
@@ -236,14 +231,14 @@ fun ExpenseDetailCard(
                             color = Color.DarkGray
                         )
                         Text(
-                            text = payerName,
+                            text = expense.owesToName ?: "You",
                             fontSize = 24.sp,
                             color = Color.Black
                         )
                     }
                 }
             }
-            if(userId == expense.payerId){
+            if(expense.userWasPayer){
                 OutlinedButton(
                     onClick = {/*TODO*/ },
                     shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),
@@ -285,45 +280,9 @@ fun ExpenseDetailCard(
 
 @Composable
 fun SplitDetailCard(
-    expense: Expense,
+    expense: ActivityExpenseDto,
     modifier: Modifier = Modifier
 ){
-    val noOfMembers = 4
-    val share = expense.amount / noOfMembers
-    val members = listOf(
-        User(
-            id = 1,
-            name = "Nirmal Bhunwal",
-            password = "123456",
-            email = "nirmal123@gmail.com",
-            upiId = "1234@oksbi",
-            phoneNumber = "9155916131"
-        ),
-        User(
-            id = 2,
-            name = "Abhinav Kumar",
-            password = "123456",
-            email = "abhinav123@gmail.com",
-            upiId = "1234@oksbi",
-            phoneNumber = "9155916131"
-        ),
-        User(
-            id = 3,
-            name = "Harsh Raj",
-            password = "123456",
-            email = "harsh123@gmail.com",
-            upiId = "1234@oksbi",
-            phoneNumber = "9155916131"
-        ),
-        User(
-            id = 4,
-            name = "Affan Hussain",
-            password = "123456",
-            email = "affan123@gmail.com",
-            upiId = "1234@oksbi",
-            phoneNumber = "9155916131"
-        )
-    )
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(Color.White),
@@ -351,11 +310,25 @@ fun SplitDetailCard(
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(modifier = Modifier.padding(dimensionResource(R.dimen.mediumPadding)))
-            members.forEach { member->
+            SplitCard(
+                name = "You",
+                expense = expense,
+                modifier = Modifier.fillMaxWidth()
+                    .padding(dimensionResource(R.dimen.smallPadding))
+            )
+            if(expense.owesToName!=null){
                 SplitCard(
-                    member = member,
+                    name = expense.owesToName,
                     expense = expense,
-                    modifier = Modifier
+                    modifier = Modifier.fillMaxWidth()
+                        .padding(dimensionResource(R.dimen.smallPadding))
+                )
+            }
+            else{
+                SplitCard(
+                    name = "Others",
+                    expense = expense,
+                    modifier = Modifier.fillMaxWidth()
                         .padding(dimensionResource(R.dimen.smallPadding))
                 )
             }
@@ -378,18 +351,15 @@ fun SplitDetailCard(
                             text = "Total",
                             fontSize = 20.sp
                         )
-                        Text(
-                            text = "Split $noOfMembers ways"
-                        )
                     }
                     Column {
                         Text(
-                            text = "₹ ${expense.amount}",
+                            text = "₹${expense.amount}",
                             textAlign = TextAlign.End,
                             modifier = Modifier.fillMaxWidth()
                         )
                         Text(
-                            text = "~ ₹ $share each",
+                            text = "~ ₹${expense.userShare} each",
                             color = MaterialTheme.colorScheme.onSecondaryContainer,
                             textAlign = TextAlign.End,
                             modifier = Modifier.fillMaxWidth()
@@ -403,13 +373,10 @@ fun SplitDetailCard(
 
 @Composable
 fun SplitCard(
-    member: User,
-    expense: Expense,
+    name: String,
+    expense: ActivityExpenseDto,
     modifier: Modifier = Modifier
 ) {
-    val noOfMembers = 4
-    val share = expense.amount / noOfMembers
-    val userId = 2L
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(Color.White),
@@ -425,7 +392,7 @@ fun SplitCard(
                 .spacedBy(dimensionResource(R.dimen.mediumPadding))
         ) {
             UserAvatar(
-                name = if(userId!=member.id) member.name else "Me"
+                name = name
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -434,31 +401,31 @@ fun SplitCard(
             ){
                 Column {
                     Text(
-                        text = if(userId != member.id) member.name else "Me",
+                        text = name,
                         fontSize = 20.sp
                     )
                     Text(
-                        text = "Share: ₹ $share"
+                        text = "Share: ₹${expense.userShare}"
                     )
                 }
                 Column {
-                    if (member.id == expense.payerId) {
+                    if(name == "Others" || (!expense.userWasPayer && name == "You")){
                         Text(
-                            text = "Paid: ₹ ${expense.amount}",
+                            text = "Owes ₹${expense.userShare}",
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                    else {
+                        Text(
+                            text = "Paid: ₹${expense.amount}",
                             textAlign = TextAlign.End,
                             modifier = Modifier.fillMaxWidth()
                         )
                         Text(
-                            text = "Gets back: ₹ ${expense.amount - share}",
+                            text = "Gets back: ₹ ${expense.amount - expense.userShare}",
                             color = MaterialTheme.colorScheme.onSecondaryContainer,
                             textAlign = TextAlign.End,
                             modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                    else{
-                        Text(
-                            text = "Owes ₹ $share",
-                            color = MaterialTheme.colorScheme.error
                         )
                     }
                 }
@@ -492,7 +459,6 @@ fun UserAvatar(
         )
     }
 }
-
 
 
 //@Preview

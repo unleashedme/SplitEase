@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -27,6 +28,19 @@ public class Expenses {
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private final Instant createdAt = Instant.now();
+
+    @OneToMany(mappedBy = "expense", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<ExpenseSplits> splits;
+
+    // Getter
+    public List<ExpenseSplits> getSplits() {
+        return splits;
+    }
+
+    // Setter
+    public void setSplits(List<ExpenseSplits> splits) {
+        this.splits = splits;
+    }
 
     public UUID getId() {
         return id;

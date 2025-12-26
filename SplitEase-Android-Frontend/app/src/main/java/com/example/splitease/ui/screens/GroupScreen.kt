@@ -12,10 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenuItem
@@ -27,10 +24,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -40,8 +37,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -49,12 +44,15 @@ import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.example.splitease.R
-import com.example.splitease.data.Group
 import com.example.splitease.ui.SplitEaseBottomBar
 import com.example.splitease.ui.SplitEaseTopAppBar
+import com.example.splitease.ui.model.GroupDetailResponse
+import com.example.splitease.ui.model.GroupScreenDataResponse
 import com.example.splitease.ui.navigation.NavigationDestination
 import com.example.splitease.ui.viewmodel.CreateGroupViewModel
 import com.example.splitease.ui.viewmodel.GroupListViewModel
+import com.example.splitease.ui.viewmodel.GroupSortOrder
+import com.example.splitease.ui.viewmodel.GroupViewModel
 
 object GroupDestination: NavigationDestination {
 
@@ -66,22 +64,18 @@ object GroupDestination: NavigationDestination {
 @Composable
 fun GroupScreen(
     navController: NavHostController,
+    groupViewModel: GroupViewModel,
+    onGroupViewDetailClick: (String) -> Unit,
     createGroupViewModel: CreateGroupViewModel = viewModel(factory = CreateGroupViewModel.Factory),
     groupListViewModel: GroupListViewModel = viewModel(factory = GroupListViewModel.Factory),
     modifier: Modifier = Modifier
 ){
-    var query by remember { mutableStateOf("") }
     var showCreateGroupPopUp by remember { mutableStateOf(false) }
 
-    val groups = listOf(
-        Group(name = "Group 1", creatorId = 1L, createdAt = 123456),
-        Group(name = "Group 2", creatorId = 2L, createdAt = 123457),
-        Group(name = "Group 3", creatorId = 3L, createdAt = 123458),
-        Group(name = "Group 4", creatorId = 4L, createdAt = 123459),
-    )
+    val groupUiData = groupViewModel.groupUiState
 
-    val sortingPreferences = listOf("Newest First", "Oldest First", "Highest Amount", "Lowest Amount")
-    var selectedSortingPreference by remember { mutableStateOf(sortingPreferences[0]) }
+    val selectedPreference by groupViewModel.groupSortOrder.collectAsState()
+    val sortedExpenseList by groupViewModel.sortedGroupList.collectAsState()
     var preferenceListExpanded by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -123,33 +117,8 @@ fun GroupScreen(
             }
             item{
                 GroupStatsList(
+                    groupUiData = groupUiData,
                     modifier = Modifier
-                        .padding(dimensionResource(R.dimen.smallPadding))
-                )
-            }
-            item{
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = { newText: String -> query = newText },
-                    shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),
-                    placeholder = {Text(text = "Search groups or members...")},
-                    leadingIcon = {
-                        Icon(
-                            painter = painterResource(R.drawable.search_96),
-                            contentDescription = "Search Icon",
-                            tint = Color.Gray,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    },
-                    keyboardActions = KeyboardActions(
-                        onDone = {}
-                    ),
-                    keyboardOptions = KeyboardOptions(
-                        imeAction = ImeAction.Done,
-                        keyboardType = KeyboardType.Text
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
                         .padding(dimensionResource(R.dimen.smallPadding))
                 )
             }
@@ -190,7 +159,7 @@ fun GroupScreen(
                                     )
                             ) {
                                 Text(
-                                    text = selectedSortingPreference,
+                                    text = selectedPreference.displayName,
                                     color = Color.Black
                                 )
                                 Icon(
@@ -205,16 +174,16 @@ fun GroupScreen(
                                 shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),
                                 containerColor = Color.White
                             ) {
-                                sortingPreferences.forEach { preference ->
+                                GroupSortOrder.entries.forEach { preference ->
                                     DropdownMenuItem(
                                         text = {
                                             Text(
-                                                text = preference,
+                                                text = preference.displayName,
                                                 fontSize = 16.sp
                                             )
                                         },
                                         onClick = {
-                                            selectedSortingPreference = preference
+                                            groupViewModel.updateSortOrder(selectedPreference.displayName)
                                             preferenceListExpanded = false
                                         }
                                     )
@@ -248,15 +217,15 @@ fun GroupScreen(
                     }
                 }
             }
-            items(groups){ group ->
-                GroupCard(
-                    group = group,
-                    isActive = true,
+            item{
+                GroupList(
+                    groups = sortedExpenseList,
+                    onGroupViewDetailClick = onGroupViewDetailClick,
                     modifier = Modifier
-                        .padding(dimensionResource(R.dimen.smallPadding)),
-                    onViewDetailClick = {navController.navigate("${GroupDetailsDestination.route}/${it.groupId}")}
+                        .padding(dimensionResource(R.dimen.smallPadding))
                 )
             }
+
         }
     }
     if(showCreateGroupPopUp){
@@ -281,12 +250,9 @@ fun GroupScreen(
 
 @Composable
 fun GroupStatsList(
+    groupUiData: GroupScreenDataResponse? = null,
     modifier: Modifier = Modifier
 ){
-    val expense = 1000.00
-    val totalGroups = 3
-    val activeGroups = 2
-    val totalMembers = 15
 
     Column(
         modifier = modifier
@@ -302,14 +268,14 @@ fun GroupStatsList(
             StatCard(
                 cardHeading = "Total Groups",
                 cardIcon = R.drawable.people_96,
-                cardData = "$totalGroups",
-                cardDescription = "$activeGroups active",
+                cardData = "${groupUiData?.totalGroups}",
+                cardDescription = "${groupUiData?.activeGroupsCount} active",
                 modifier = Modifier.weight(1f)
             )
             StatCard(
                 cardHeading = "Total Members",
                 cardIcon = R.drawable.person_96,
-                cardData = "$totalMembers",
+                cardData = "${groupUiData?.totalMembersAcrossGroups}",
                 cardDescription = "Across all groups",
                 modifier = Modifier.weight(1f)
             )
@@ -322,14 +288,14 @@ fun GroupStatsList(
             StatCard(
                 cardHeading = "Total Expenses",
                 cardIcon = R.drawable.rupee_96,
-                cardData = "₹ $expense",
+                cardData = "₹ ${groupUiData?.totalExpenses}",
                 cardDescription = "Combined spending",
                 modifier = Modifier.weight(1f)
             )
             StatCard(
                 cardHeading = "Active Groups",
                 cardIcon = R.drawable.increase_96,
-                cardData = "$activeGroups",
+                cardData = "${groupUiData?.activeGroupsCount}",
                 cardDescription = "Currently tracking",
                 modifier = Modifier.weight(1f),
                 cardColor = MaterialTheme.colorScheme.inverseOnSurface,
@@ -340,16 +306,36 @@ fun GroupStatsList(
 }
 
 @Composable
-fun GroupCard(
-    group: Group,
-    isActive: Boolean,
-    onViewDetailClick:(Group) -> Unit,
+fun GroupList(
+    groups: List<GroupDetailResponse>,
+    onGroupViewDetailClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ){
-    val groupMembers = 5
-    val totalGroupExpense = 30
-    val yourShare = 5
-    val lastActivity = "2 days ago"
+    groups.forEach { group ->
+        GroupCard(
+            groupName = group.groupName,
+            noOfMembers = group.memberCount,
+            isActive = group.isActive,
+            totalExpense = group.totalGroupExpense,
+            userShare = group.userShare,
+            onViewDetailClick = {
+                onGroupViewDetailClick(group.groupId)
+            },
+            modifier = modifier
+        )
+    }
+}
+
+@Composable
+fun GroupCard(
+    groupName: String,
+    noOfMembers: Int,
+    isActive: Boolean,
+    totalExpense: Double,
+    userShare: Double,
+    onViewDetailClick:() -> Unit,
+    modifier: Modifier = Modifier
+){
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(Color.White),
@@ -373,7 +359,7 @@ fun GroupCard(
                         .spacedBy(dimensionResource(R.dimen.smallPadding))
                 ){
                     Text(
-                        text = group.name,
+                        text = groupName,
                         fontSize = 20.sp
                     )
                     Row {
@@ -385,7 +371,7 @@ fun GroupCard(
                         )
                         Spacer(modifier = Modifier.padding(4.dp))
                         Text(
-                            text = "$groupMembers members",
+                            text = "$noOfMembers members",
                             color = Color.Gray,
                             fontSize = 12.sp
                         )
@@ -412,10 +398,10 @@ fun GroupCard(
                         }
                     }
                 }
-                GroupAvatar(name = group.name, modifier = Modifier.padding( 4.dp))
+                GroupAvatar(name = groupName, modifier = Modifier.padding( 4.dp))
             }
 
-            Spacer(modifier = Modifier.padding(20.dp))
+            Spacer(modifier = Modifier.padding(8.dp))
             Row(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
@@ -427,7 +413,7 @@ fun GroupCard(
                     color = Color.Gray
                 )
                 Text(
-                    text = "₹ $totalGroupExpense",
+                    text = "₹ $totalExpense",
                     fontSize = 12.sp,
                     color = Color.Gray
                 )
@@ -443,7 +429,7 @@ fun GroupCard(
                     color = Color.Gray
                 )
                 Text(
-                    text = "₹ $yourShare",
+                    text = "₹ $userShare",
                     fontSize = 12.sp,
                     color = Color.Blue,
                 )
@@ -452,37 +438,9 @@ fun GroupCard(
                 thickness = 1.dp,
                 color = Color.LightGray
             )
-            Row(
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row {
-                    Icon(
-                        painter = painterResource(R.drawable.calendar_24),
-                        contentDescription = "group Icon",
-                        modifier = Modifier.size(14.dp),
-                        tint = Color.Gray
-                    )
-                    Spacer(modifier = Modifier.padding(4.dp))
-                    Text(
-                        text = "Last Activity",
-                        fontSize = 12.sp,
-                        color = Color.Gray
-                    )
-                }
-                Text(
-                    text = lastActivity,
-                    fontSize = 12.sp
-                )
-            }
-            HorizontalDivider(
-                thickness = 1.dp,
-                color = Color.LightGray
-            )
-            Spacer(modifier = Modifier.padding(12.dp))
+            Spacer(modifier = Modifier.padding(4.dp))
             FilledIconButton(
-                onClick = { onViewDetailClick(group) },
+                onClick = { onViewDetailClick() },
                 shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -498,29 +456,3 @@ fun GroupCard(
         }
     }
 }
-
-
-//@Preview
-//@Composable
-//fun GroupStatsListPreview(){
-//    GroupStatsList()
-//}
-
-//@Preview
-//@Composable
-//fun GroupCardPreview() {
-//    GroupCard(
-//        group = Group(
-//            name = "Group 1",
-//            creatorId = 1,
-//            createdAt = 123456
-//        ),
-//        isActive = true
-//    )
-//}
-
-//@Preview(showBackground = true)
-//@Composable
-//fun GroupScreenPreview(){
-//    GroupScreen()
-//}
