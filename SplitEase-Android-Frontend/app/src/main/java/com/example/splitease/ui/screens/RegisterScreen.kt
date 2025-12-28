@@ -69,6 +69,7 @@ fun RegisterScreen(
             Image(
                 painter = painterResource(R.drawable.splitease_logo_without_bottom_tag),
                 contentDescription = "SplitEase logo",
+                modifier = Modifier.size(180.dp)
             )
             Spacer(modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding)))
         }
@@ -96,6 +97,9 @@ fun RegisterScreen(
                 modifier = Modifier
                     .padding(dimensionResource(R.dimen.smallPadding))
             )
+        }
+        item {
+            Spacer(modifier = Modifier.padding(vertical = 80.dp))
         }
     }
 }
@@ -207,32 +211,6 @@ fun RegisterCard(
                 },
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Number
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-            )
-            Spacer(modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding)))
-            Text(
-                text = "Upi Id",
-                fontSize = 16.sp
-            )
-            OutlinedTextField(
-                value = userDetails.upiId,
-                onValueChange = { onValueChange(userDetails.copy(upiId = it)) },
-                shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),
-                placeholder = { Text("Upi Id") },
-                singleLine = true,
-                leadingIcon = {
-                    Icon(
-                        painter = painterResource(R.drawable.account_96),
-                        contentDescription = "Upi Icon",
-                        modifier = Modifier
-                            .size(20.dp),
-                        tint = Color.Gray
-                    )
-                },
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Password
                 ),
                 modifier = Modifier
                     .fillMaxWidth()

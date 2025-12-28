@@ -16,9 +16,7 @@ data class UserGroupResponse(
 data class SettlementSummary(
     val toUserId: String,
     val toUserName: String,
-    val amount: Double,
-    val groupId: String,
-    val groupName: String
+    val amount: Double
 )
 
 data class ActivitySummaryDto(
@@ -58,7 +56,6 @@ data class GroupDetailResponse(
     val memberCount: Int,
     val userShare: Double,
     val memberNames: List<String>,
-    val settlements: List<SettlementDTO>,
     val expenses: List<ExpenseDTO>
 )
 
@@ -71,13 +68,6 @@ data class ExpenseDTO(
     val splitPerPerson: Double
 )
 
-data class SettlementDTO(
-    val fromUser: String,
-    val toUser: String,
-    val amount: Double,
-    val date: String,
-    val note: String?
-)
 
 data class DashboardStatResponse(
     val totalUserExpense: Double,

@@ -23,7 +23,7 @@ interface Repository{
 
     suspend fun createGroup(groupName: String, members: List<String>): Response<CreateGroupResponse>
 
-    suspend fun addExpense(groupId: String, amount: Double, description: String) : String
+    suspend fun addExpense(groupId: String, amount: Double, description: String) : Response<Unit>
 
     suspend fun getMyGroups(): List<UserGroupResponse>
 
@@ -36,6 +36,12 @@ interface Repository{
     suspend fun getGroupScreenData(): GroupScreenDataResponse
 
     suspend fun getDashboardStat(): DashboardStatResponse
+
+    suspend fun deleteGroup(groupId: String): Response<Unit>
+
+    suspend fun deleteExpense(expenseId: String): Response<Unit>
+
+    suspend fun updateFcmToken(token: String): Response<Unit>
 
 }
 class NetworkRepository(
@@ -52,4 +58,7 @@ class NetworkRepository(
     override suspend fun getActivity(): ActivitySummaryDto = apiService.getActivity()
     override suspend fun getGroupScreenData(): GroupScreenDataResponse = apiService.getGroupScreenData()
     override suspend fun getDashboardStat(): DashboardStatResponse = apiService.getDashboardStats()
+    override suspend fun deleteGroup(groupId: String) = apiService.deleteGroup(groupId)
+    override suspend fun deleteExpense(expenseId: String) = apiService.deleteExpense(expenseId)
+    override suspend fun updateFcmToken(token: String): Response<Unit> = apiService.updateFcmToken(token)
 }

@@ -3,7 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     id("kotlin-kapt")
-
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -83,6 +83,13 @@ dependencies {
     implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
 
     implementation("com.squareup.retrofit2:converter-scalars:2.11.0")
+
+    // firebase messaging dependency
+    implementation("com.google.firebase:firebase-messaging-ktx:24.0.0")
+    // When using the BoM, don't specify versions in Firebase dependencies
+    implementation(platform("com.google.firebase:firebase-bom:34.7.0"))
+    // Import the Firebase BoM
+    implementation("com.google.firebase:firebase-analytics")
 
 
     testImplementation(libs.junit)

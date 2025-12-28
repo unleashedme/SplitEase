@@ -1,6 +1,7 @@
 package com.example.splitease.datastore
 
 import android.content.Context
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -18,16 +19,21 @@ class AuthStore(private val context: Context) {
         private val NAME = stringPreferencesKey("name")
         private val EMAIL = stringPreferencesKey("email")
         private val PHONE = stringPreferencesKey("phone")
-        private val UPI_ID = stringPreferencesKey("upi_id")
+        private val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
     }
 
-    suspend fun save(token: String, name: String, email: String, phone: String, upiId:String){
+    suspend fun save(token: String, name: String, email: String, phone: String){
         context.dataStore.edit{ prefs ->
             prefs[TOKEN] = token
             prefs[NAME] = name
             prefs[EMAIL] = email
             prefs[PHONE] = phone
-            prefs[UPI_ID] = upiId
+        }
+    }
+
+    suspend fun saveNotificationPreference(isEnabled: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[NOTIFICATIONS_ENABLED] = isEnabled
         }
     }
 
@@ -40,7 +46,7 @@ class AuthStore(private val context: Context) {
                 name = prefs[NAME],
                 email = prefs[EMAIL],
                 phone = prefs[PHONE],
-                upiId = prefs[UPI_ID]
+                isNotificationsEnabled = prefs[NOTIFICATIONS_ENABLED] ?: true
             )
         }
 

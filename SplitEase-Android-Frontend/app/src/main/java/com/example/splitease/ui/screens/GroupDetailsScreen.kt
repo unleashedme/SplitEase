@@ -43,7 +43,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.splitease.R
 import com.example.splitease.ui.model.ExpenseDTO
-import com.example.splitease.ui.model.SettlementDTO
 import com.example.splitease.ui.navigation.NavigationDestination
 import com.example.splitease.ui.viewmodel.GroupViewModel
 
@@ -56,7 +55,7 @@ object GroupDetailsDestination : NavigationDestination {
 }
 
 enum class GroupDetailFilter {
-    EXPENSES, MEMBERS, SETTLEMENTS
+    EXPENSES, MEMBERS
 }
 
 @Composable
@@ -89,6 +88,12 @@ fun GroupDetailsScreen(
                     navigateBack = navigateBack,
                     groupName = groupDetail?.groupName?:"",
                     noOfMembers = groupDetail?.memberCount?:0,
+                    onDeleteGroupClicked = {
+                        groupViewModel.deleteGroup(groupId){
+                            groupViewModel.getGroupScreenData()
+                            navigateBack()
+                        }
+                    },
                     modifier = Modifier
                         .padding(dimensionResource(R.dimen.smallPadding))
                 )
@@ -139,13 +144,6 @@ fun GroupDetailsScreen(
                                 .padding(dimensionResource(R.dimen.smallPadding))
                         )
                     }
-                    else -> {
-                        SettlementList(
-                            settlements = groupDetail?.settlements?:emptyList(),
-                            modifier = Modifier
-                                .padding(dimensionResource(R.dimen.smallPadding))
-                        )
-                    }
                 }
             }
         }
@@ -185,7 +183,6 @@ fun GroupDetailFilterTabs(
                     text = when (filter) {
                         GroupDetailFilter.EXPENSES -> "Expenses"
                         GroupDetailFilter.MEMBERS -> "Members"
-                        GroupDetailFilter.SETTLEMENTS -> "Settlements"
                     },
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium
@@ -197,11 +194,14 @@ fun GroupDetailFilterTabs(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun GroupDetailsCard(
+    onDeleteGroupClicked:() -> Unit,
     groupName: String,
     noOfMembers: Int,
     navigateBack:() -> Unit,
     modifier: Modifier = Modifier
 ){
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(Color.White),
@@ -278,7 +278,33 @@ fun GroupDetailsCard(
                     }
                 }
             }
+            OutlinedButton(
+                onClick = { showDeleteDialog = true } ,
+                shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),
+                colors = ButtonDefaults.elevatedButtonColors(Color.White),
+                border = BorderStroke(1.dp, Color.LightGray),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "Delete Group",
+                    color = MaterialTheme.colorScheme.error,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
         }
+    }
+    if (showDeleteDialog) {
+        DeleteConfirmationDialog(
+            title = "Delete Group?",
+            content = "This will permanently remove this group from everyone's groupList. This cannot be undone.",
+            onConfirm = {
+                showDeleteDialog = false
+                onDeleteGroupClicked()
+            },
+            onDismiss = { showDeleteDialog = false }
+        )
     }
 }
 
@@ -501,220 +527,3 @@ fun MemberCard(
         }
     }
 }
-
-@Composable
-fun SettlementList(
-    settlements: List<SettlementDTO>,
-    modifier: Modifier = Modifier
-){
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(Color.White),
-        shape = RoundedCornerShape(20.dp),
-        border = BorderStroke(width = 0.2.dp, color = Color.Gray),
-        elevation = CardDefaults.elevatedCardElevation()
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(dimensionResource(R.dimen.largePadding)),
-            verticalArrangement = Arrangement
-                .spacedBy(dimensionResource(R.dimen.mediumPadding))
-        ) {
-            Text(
-                text = "Payment History",
-                fontSize = 20.sp,
-                textAlign = TextAlign.Start,
-                modifier = Modifier.fillMaxWidth()
-            )
-            Text(
-                text = "All recorded payment and settlements",
-                color = Color.Gray,
-                textAlign = TextAlign.Start,
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(
-                modifier = Modifier
-                    .padding(dimensionResource(R.dimen.mediumPadding))
-            )
-            settlements.forEach {settlement ->
-                SettlementCard(
-                    fromUser = settlement.fromUser,
-                    toUser = settlement.toUser,
-                    amount = settlement.amount,
-                    date = settlement.date,
-                    note = settlement.note ?:"",
-                    modifier = Modifier
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun SettlementCard(
-    fromUser: String,
-    toUser: String,
-    amount: Double,
-    date: String,
-    note: String,
-    modifier: Modifier = Modifier
-){
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
-        modifier = modifier
-            .padding(4.dp)
-            .fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        elevation = CardDefaults.elevatedCardElevation(),
-        border = BorderStroke(0.2.dp, Color.Gray)
-    ){
-        Row(
-            modifier = Modifier
-                .padding(8.dp)
-                .fillMaxWidth(),
-            horizontalArrangement = Arrangement.Start,
-            verticalAlignment = Alignment.Top
-        ) {
-            Image(
-                painter = painterResource(R.drawable.splitease_logo_without_bottom_tag),
-                contentDescription = "Logo",
-                modifier = Modifier.size(60.dp)
-            )
-            Column(
-                modifier = Modifier
-                    .padding(horizontal = 8.dp),
-                horizontalAlignment = Alignment.Start,
-                verticalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row {
-                    Text(
-                        text = fromUser,
-                        fontSize = 20.sp
-                    )
-                    Icon(
-                        painter = painterResource(R.drawable.arrow_right_100),
-                        contentDescription = "right Arrow",
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Text(
-                        text = toUser,
-                        fontSize = 20.sp
-                    )
-                }
-                Spacer(modifier = Modifier.padding(4.dp))
-                Row(
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.calendar_24),
-                        contentDescription = "Calendar Icon",
-                        modifier = Modifier.size(16.dp),
-                        tint = Color.Gray
-                    )
-                    Text(
-                        text = formatIsoDate(date),
-                        modifier = Modifier.padding(start = 4.dp),
-                        color = Color.Gray
-                    )
-                    Spacer(modifier = Modifier.padding(horizontal = 4.dp))
-                    Icon(
-                        painter = painterResource(R.drawable.dot_96),
-                        contentDescription = "group Icon",
-                        modifier = Modifier.size(12.dp),
-                        tint = Color.Gray
-                    )
-                    Text(
-                        text = note,
-                        modifier = Modifier.padding(start = 4.dp),
-                        color = Color.Gray
-                    )
-                }
-                Spacer(modifier = Modifier.padding(4.dp))
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "₹${amount}",
-                        fontSize = 20.sp,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-                }
-            }
-        }
-    }
-}
-
-
-//@Preview
-//@Composable
-//fun GroupDetailsCardPreview(){
-//    GroupDetailsCard(
-//        group = Group(
-//            name = "Group 1",
-//            creatorId = 1,
-//            createdAt = 123456
-//        )
-//    )
-//}
-
-//@Preview
-//@Composable
-//fun MemberCardPreview(){
-//    MemberCard(
-//        member = User(
-//            id = 3,
-//            name = "Harsh Raj",
-//            password = "123456",
-//            email = "harsh123@gmail.com",
-//            upiId = "1234@oksbi",
-//            phoneNumber = "9155916131"
-//        ),
-//        balance = -100.00
-//    )
-//}
-
-//@Preview
-//@Composable
-//fun GroupMembersCardPreview(){
-//    GroupMembersCard()
-//}
-
-//@Preview
-//@Composable
-//fun PaymentHistoryCardPreview(){
-//    PaymentHistoryCard()
-//}
-//
-//@Preview
-//@Composable
-//fun SettlementCardPreview() {
-//    SettlementCard(
-//        settlement = Settlement(
-//            id = 1,
-//            groupId = 1,
-//            fromUser = 1,
-//            toUser = 2,
-//            amount = 100.0,
-//            paymentDescription = "Paid via GPay",
-//            createdAt = LocalDate.now()
-//        )
-//    )
-//}
-
-
-//@Preview
-//@Composable
-//fun GroupExpensesListPreview(){
-//    GroupExpensesList()
-//}
-
-//@Preview(showBackground = true)
-//@Composable
-//fun GroupDetailScreenPreview(){
-//    GroupDetailsScreen()
-//}

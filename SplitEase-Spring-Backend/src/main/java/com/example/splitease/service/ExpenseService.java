@@ -3,12 +3,17 @@ package com.example.splitease.service;
 import com.example.splitease.models.*;
 import com.example.splitease.repo.*;
 import com.example.splitease.requestAndResponse.AddExpenseRequest;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.nio.file.AccessDeniedException;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class ExpenseService {
@@ -27,6 +32,9 @@ public class ExpenseService {
 
     @Autowired
     private UserRepo userRepo;
+
+    @Autowired
+    private NotificationService notificationService;
 
     public void addExpense(AddExpenseRequest request, String payerEmail) {
 
@@ -72,6 +80,39 @@ public class ExpenseService {
 
             expenseSplitRepo.save(split);
         }
+
+        for (GroupMembers member : members) {
+            Users userToNotify = member.getUser();
+
+            // don't send a notification to the person who just added the expense
+            if (!userToNotify.getId().equals(expense.getPayer().getId())) {
+
+                String token = userToNotify.getFcmToken();
+                if (token != null && !token.isEmpty()) {
+                    notificationService.sendPushNotification(
+                            token,
+                            "New Expense in " + expense.getGroup().getName(),
+                            expense.getPayer().getName() + " added ₹" + expense.getAmount() + " for " + expense.getDescription()
+                    );
+                }
+            }
+        }
+
+    }
+
+    @Transactional
+    public void deleteExpense(UUID expenseId, String userEmail) throws AccessDeniedException {
+        System.out.println("delete expense called");
+        Expenses expense = expenseRepo.findById(expenseId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Expense not found"));
+
+        // If User is not payer then do not delete
+        if (!expense.getPayer().getEmail().equals(userEmail)) {
+            throw new AccessDeniedException("Unauthorized");
+        }
+
+        expenseRepo.delete(expense); // splits will be deleted automatically
+        System.out.println("expense Deleted");
     }
 
 }

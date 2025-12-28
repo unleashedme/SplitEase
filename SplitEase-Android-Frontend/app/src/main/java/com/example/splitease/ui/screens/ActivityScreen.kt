@@ -30,6 +30,7 @@ import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -55,7 +56,10 @@ import com.example.splitease.ui.model.ActivityExpenseDto
 import com.example.splitease.ui.navigation.NavigationDestination
 import com.example.splitease.ui.viewmodel.ActivityViewModel
 import com.example.splitease.ui.viewmodel.AddExpenseViewModel
+import com.example.splitease.ui.viewmodel.DashboardViewModel
 import com.example.splitease.ui.viewmodel.GroupListViewModel
+import com.example.splitease.ui.viewmodel.GroupViewModel
+import com.example.splitease.ui.viewmodel.SettlementViewModel
 import com.example.splitease.ui.viewmodel.SortPreference
 import java.time.Instant
 import java.time.ZoneId
@@ -81,12 +85,18 @@ fun ActivityScreen(
     activityViewModel: ActivityViewModel,
     addExpenseViewModel: AddExpenseViewModel = viewModel(factory = AddExpenseViewModel.Factory),
     groupListViewModel: GroupListViewModel = viewModel(factory = GroupListViewModel.Factory),
+    dashboardViewModel: DashboardViewModel = viewModel(factory = DashboardViewModel.Factory),
+    groupViewModel: GroupViewModel = viewModel(factory = GroupViewModel.Factory),
+    settlementViewModel: SettlementViewModel = viewModel(factory = SettlementViewModel.Factory)
 ){
 
     val groupList = groupListViewModel.groupListUiState.groups
 
     var showAddExpensePopUp by remember { mutableStateOf(false) }
 
+    LaunchedEffect(Unit) {
+        activityViewModel.getActivity()
+    }
     val activityUiState = activityViewModel.activityUiState
     var selectedFilter by remember { mutableStateOf(ExpenseFilter.ALL) }
 
@@ -283,11 +293,12 @@ fun ActivityScreen(
                 addExpenseUiState = addExpenseViewModel.addExpenseUiState,
                 onValueChange = addExpenseViewModel::updateUiState,
                 groupsList = groupList,
-                onAddExpenseClick = {
-                    addExpenseViewModel.addExpense(it)
-                    showAddExpensePopUp = false
-                },
-                onClose = {showAddExpensePopUp = false}
+                settlementViewModel = settlementViewModel,
+                activityViewModel = activityViewModel,
+                dashboardViewModel = dashboardViewModel,
+                groupViewModel = groupViewModel,
+                addExpenseViewModel = addExpenseViewModel,
+                onClose = { showAddExpensePopUp = false }
             )
         }
     }

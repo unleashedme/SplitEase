@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import org.hibernate.annotations.ManyToAny;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -23,6 +24,9 @@ public class Groups {
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private final Instant createdAt = Instant.now();
+
+    @OneToMany(mappedBy = "group", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Expenses> expenses;
 
     public String getName() {
         return name;
@@ -52,6 +56,15 @@ public class Groups {
     public Instant getCreatedAt() {
         return createdAt;
     }
+
+    public List<Expenses> getExpenses() {
+        return expenses;
+    }
+
+    public void setExpenses(List<Expenses> expenses) {
+        this.expenses = expenses;
+    }
+
 
     @Override
     public String toString() {

@@ -1,7 +1,11 @@
 package com.example.splitease.repo;
 
 import com.example.splitease.models.Users;
+import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.UUID;
@@ -11,59 +15,8 @@ public interface UserRepo extends JpaRepository<Users, UUID> {
 
     Users findByEmail(String email);
 
-    class LogInResponse {
-        private String token;
-        private String name;
-        private String email;
-        private String phone;
-        private String upiId;
-
-        public LogInResponse(String token, String name, String email, String phone, String upiId) {
-            this.token = token;
-            this.name = name;
-            this.email = email;
-            this.phone = phone;
-            this.upiId = upiId;
-        }
-
-        public String getToken() {
-            return token;
-        }
-
-        public void setToken(String token) {
-            this.token = token;
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public void setName(String name) {
-            this.name = name;
-        }
-
-        public String getEmail() {
-            return email;
-        }
-
-        public void setEmail(String email) {
-            this.email = email;
-        }
-
-        public String getPhone() {
-            return phone;
-        }
-
-        public void setPhone(String phone) {
-            this.phone = phone;
-        }
-
-        public String getUpiId() {
-            return upiId;
-        }
-
-        public void setUpiId(String upiId) {
-            this.upiId = upiId;
-        }
-    }
+    @Modifying
+    @Transactional
+    @Query("UPDATE Users u SET u.fcmToken = null WHERE u.fcmToken = :token")
+    void clearFcmTokenByToken(@Param("token") String token);
 }

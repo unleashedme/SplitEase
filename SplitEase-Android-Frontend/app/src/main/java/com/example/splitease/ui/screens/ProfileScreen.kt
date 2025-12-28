@@ -18,7 +18,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -30,9 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -52,6 +49,7 @@ import com.example.splitease.ui.SplitEaseTopAppBar
 import com.example.splitease.ui.navigation.NavigationDestination
 import com.example.splitease.ui.viewmodel.ProfileUiState
 import com.example.splitease.ui.viewmodel.ProfileViewModel
+import kotlinx.coroutines.launch
 
 
 object ProfileDestination: NavigationDestination {
@@ -68,6 +66,7 @@ fun ProfileScreen(
     viewModel: ProfileViewModel = viewModel(factory = ProfileViewModel.Factory)
 ){
     val profileUiState by viewModel.profileUiState.collectAsState()
+
 
     LaunchedEffect(Unit) {
         viewModel.navigateToLoginScreen.collect {
@@ -123,16 +122,12 @@ fun ProfileScreen(
             }
             item{
                 PreferencesCard(
+                    profileViewModel = viewModel,
                     modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding))
                 )
             }
             item{
-                StatsCard(
-                    modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding))
-                )
-            }
-            item{
-                DeleteProfileCard(
+                LogOutCard(
                     onLogOutClick = { viewModel.logOut() },
                     modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding))
                 )
@@ -155,7 +150,7 @@ fun ProfilePicture(
         modifier = modifier
             .size(80.dp)
             .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.inverseSurface),
+            .background(Color.DarkGray),
         contentAlignment = Alignment.Center
     ) {
         Text(
@@ -290,67 +285,17 @@ fun PersonalInfoCard(
                     fontSize = 16.sp
                 )
             }
-            Spacer(modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding)))
-            Text(
-                text = "UPI Id",
-                textAlign = TextAlign.Start,
-                modifier = Modifier.fillMaxWidth(),
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp
-            )
-            Row(
-                horizontalArrangement = Arrangement.Start,
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ){
-                Icon(
-                    painter = painterResource(R.drawable.payment_96),
-                    contentDescription = "payment Icon",
-                    tint = Color.Gray,
-                    modifier = Modifier
-                        .size(16.dp)
-                )
-                Spacer(modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding)))
-                profileUiState.upiId?.let {
-                    Text(
-                        text = it,
-                        fontSize = 16.sp
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding)))
-            OutlinedButton(
-                onClick = {/*TODO*/ },
-                shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),
-                colors = ButtonDefaults.elevatedButtonColors(Color.White),
-                border = BorderStroke(1.dp, Color.LightGray),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.edit_96),
-                    contentDescription = "edit Icon",
-                    tint = Color.Black,
-                    modifier = Modifier
-                        .size(16.dp)
-                )
-                Spacer(modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding)))
-                Text(
-                    text = "Edit Your Profile",
-                    color = Color.Black
-                )
-            }
         }
     }
 }
 
 @Composable
 fun PreferencesCard(
+    profileViewModel: ProfileViewModel,
     modifier: Modifier = Modifier
 ){
-    var emailNotification by remember { mutableStateOf(true) }
-    var pushNotification by remember { mutableStateOf(true) }
-    var expenseReminder by remember { mutableStateOf(true) }
-    var paymentReminder by remember { mutableStateOf(true) }
+    val profileUiState by profileViewModel.profileUiState.collectAsState()
+    val scope = rememberCoroutineScope()
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -367,13 +312,13 @@ fun PreferencesCard(
                 .spacedBy(dimensionResource(R.dimen.smallPadding))
         ) {
             Text(
-                text = "Preferences",
+                text = "Preference",
                 fontSize = 20.sp,
                 textAlign = TextAlign.Start,
                 modifier = Modifier.fillMaxWidth()
             )
             Text(
-                text = "Manage your notifications and privacy settings",
+                text = "Manage your notification settings",
                 color = Color.Gray,
                 textAlign = TextAlign.Start,
                 modifier = Modifier.fillMaxWidth()
@@ -404,35 +349,6 @@ fun PreferencesCard(
             ) {
                 Column {
                     Text(
-                        text = "Email Notifications",
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "Receive email updates about your expense",
-                        color = Color.Gray
-                    )
-                }
-                Switch(
-                    checked = emailNotification,
-                    onCheckedChange = { emailNotification = it },
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                        checkedTrackColor = MaterialTheme.colorScheme.primary,
-                        uncheckedThumbColor = MaterialTheme.colorScheme.outline,
-                        uncheckedTrackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                        uncheckedBorderColor = MaterialTheme.colorScheme.outline
-                    ),
-                    modifier = Modifier.scale(0.8f)
-                )
-            }
-            HorizontalDivider(thickness = 1.dp, color = Color.LightGray)
-            Row(
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column {
-                    Text(
                         text = "Push Notifications",
                         fontWeight = FontWeight.Bold
                     )
@@ -442,8 +358,12 @@ fun PreferencesCard(
                     )
                 }
                 Switch(
-                    checked = pushNotification,
-                    onCheckedChange = { pushNotification = it },
+                    checked = profileUiState.isNotificationsEnabled,
+                    onCheckedChange = { isChecked ->
+                        scope.launch {
+                            profileViewModel.updateNotificationPreference(isChecked)
+                        }
+                    },
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
                         checkedTrackColor = MaterialTheme.colorScheme.primary,
@@ -453,296 +373,13 @@ fun PreferencesCard(
                     ),
                     modifier = Modifier.scale(0.8f)
                 )
-            }
-            HorizontalDivider(thickness = 1.dp, color = Color.LightGray)
-            Row(
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column {
-                    Text(
-                        text = "Expense Reminders",
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "Weekly summary of you expenses",
-                        color = Color.Gray
-                    )
-                }
-                Switch(
-                    checked = expenseReminder,
-                    onCheckedChange = { expenseReminder = it },
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                        checkedTrackColor = MaterialTheme.colorScheme.primary,
-                        uncheckedThumbColor = MaterialTheme.colorScheme.outline,
-                        uncheckedTrackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                        uncheckedBorderColor = MaterialTheme.colorScheme.outline
-                    ),
-                    modifier = Modifier.scale(0.8f)
-                )
-            }
-            HorizontalDivider(thickness = 1.dp, color = Color.LightGray)
-            Row(
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column {
-                    Text(
-                        text = "Payment Reminders",
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "Reminder for pending payments",
-                        color = Color.Gray
-                    )
-                }
-                Switch(
-                    checked = paymentReminder,
-                    onCheckedChange = { paymentReminder = it },
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                        checkedTrackColor = MaterialTheme.colorScheme.primary,
-                        uncheckedThumbColor = MaterialTheme.colorScheme.outline,
-                        uncheckedTrackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                        uncheckedBorderColor = MaterialTheme.colorScheme.outline
-                    ),
-                    modifier = Modifier.scale(0.8f)
-                )
-            }
-            HorizontalDivider(thickness = 1.dp, color = Color.LightGray)
-            Spacer(modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding)))
-            OutlinedButton(
-                onClick = {/*TODO*/ },
-                shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),
-                colors = ButtonDefaults.elevatedButtonColors(Color.White),
-                border = BorderStroke(1.dp, Color.LightGray),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    horizontalArrangement = Arrangement
-                        .spacedBy(dimensionResource(R.dimen.mediumPadding)),
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.password_96),
-                        contentDescription = "password Icon",
-                        tint = Color.Black,
-                        modifier = Modifier
-                            .size(16.dp)
-                    )
-                    Text(
-                        text = "Change Password",
-                        color = Color.Black
-                    )
-                }
-            }
-            OutlinedButton(
-                onClick = {/*TODO*/ },
-                shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),
-                colors = ButtonDefaults.elevatedButtonColors(Color.White),
-                border = BorderStroke(1.dp, Color.LightGray),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    horizontalArrangement = Arrangement
-                        .spacedBy(dimensionResource(R.dimen.mediumPadding)),
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.painting_96),
-                        contentDescription = "appearance Icon",
-                        tint = Color.Black,
-                        modifier = Modifier
-                            .size(16.dp)
-                    )
-                    Text(
-                        text = "Appearance",
-                        color = Color.Black
-                    )
-                }
-            }
-            OutlinedButton(
-                onClick = {/*TODO*/ },
-                shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),
-                colors = ButtonDefaults.elevatedButtonColors(Color.White),
-                border = BorderStroke(1.dp, Color.LightGray),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    horizontalArrangement = Arrangement
-                        .spacedBy(dimensionResource(R.dimen.mediumPadding)),
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.globe_96),
-                        contentDescription = "Language Icon",
-                        tint = Color.Black,
-                        modifier = Modifier
-                            .size(16.dp)
-                    )
-                    Text(
-                        text = "Language & Region",
-                        color = Color.Black
-                    )
-                }
             }
         }
     }
 }
 
 @Composable
-fun StatsCard(
-    modifier: Modifier = Modifier
-){
-    val totalExpense = 100.00
-    val noOfGroups = 5
-    val noOfTransaction = 50
-
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(Color.White),
-        shape = RoundedCornerShape(20.dp),
-        border = BorderStroke(width = 0.2.dp, color = Color.Gray),
-        elevation = CardDefaults.elevatedCardElevation()
-    ){
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(dimensionResource(R.dimen.largePadding)),
-            verticalArrangement = Arrangement
-                .spacedBy(dimensionResource(R.dimen.mediumPadding))
-        ) {
-            Text(
-                text = "Your Stats",
-                fontSize = 20.sp,
-                textAlign = TextAlign.Start,
-                modifier = Modifier.fillMaxWidth()
-            )
-            Text(
-                text = "Activity Overview",
-                color = Color.Gray,
-                textAlign = TextAlign.Start,
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(modifier = Modifier
-                .padding(dimensionResource(R.dimen.mediumPadding)))
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
-            ) {
-                Row(
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .padding(dimensionResource(R.dimen.largePadding))
-                        .fillMaxWidth()
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.smallPadding)),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.rupee_96),
-                            contentDescription = "Rupee Icon",
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier
-                                .size(20.dp)
-                        )
-                        Text(
-                            text = "Total Expenses",
-                            fontSize = 16.sp,
-                            color = Color.Black
-                        )
-                    }
-                    Text(
-                        text = "₹ $totalExpense",
-                        fontSize = 16.sp,
-                        color = Color.Black
-                    )
-                }
-            }
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
-            ) {
-                Row(
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .padding(dimensionResource(R.dimen.largePadding))
-                        .fillMaxWidth()
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.smallPadding)),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.people_96),
-                            contentDescription = "Rupee Icon",
-                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                            modifier = Modifier
-                                .size(20.dp)
-                        )
-                        Text(
-                            text = "Groups",
-                            fontSize = 16.sp,
-                            color = Color.Black
-                        )
-                    }
-                    Text(
-                        text = "$noOfGroups",
-                        fontSize = 16.sp,
-                        color = Color.Black
-                    )
-                }
-            }
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
-            ) {
-                Row(
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .padding(dimensionResource(R.dimen.largePadding))
-                        .fillMaxWidth()
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.smallPadding)),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.transaction_96),
-                            contentDescription = "Rupee Icon",
-                            tint = MaterialTheme.colorScheme.onTertiaryContainer,
-                            modifier = Modifier
-                                .size(20.dp)
-                        )
-                        Text(
-                            text = "Transactions",
-                            fontSize = 16.sp,
-                            color = Color.Black
-                        )
-                    }
-                    Text(
-                        text = "$noOfTransaction",
-                        fontSize = 16.sp,
-                        color = Color.Black
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun DeleteProfileCard(
+fun LogOutCard(
     onLogOutClick: () -> Unit,
     modifier: Modifier = Modifier
 ){
@@ -768,7 +405,7 @@ fun DeleteProfileCard(
                 modifier = Modifier.fillMaxWidth()
             )
             Text(
-                text = "Bye Bye!!",
+                text = "Sayonara!!",
                 color = Color.Gray,
                 textAlign = TextAlign.Start,
                 modifier = Modifier.fillMaxWidth()
@@ -791,44 +428,3 @@ fun DeleteProfileCard(
         }
     }
 }
-
-
-//@Preview
-//@Composable
-//fun PersonalInfoPreview(){
-//    PersonalInfoCard(
-//        user = User(
-//            id = 1,
-//            name = "Abhinav Kumar",
-//            password = "abhi",
-//            email = "baranwalabhi.24@gmail.com",
-//            upiId = "9155916131@oksbi",
-//            phoneNumber = "9155916131",
-//            createdAt = 123456
-//        )
-//    )
-//}
-
-//@Preview
-//@Composable
-//fun PreferencesCardPreview(){
-//    PreferencesCard()
-//}
-
-//@Preview
-//@Composable
-//fun StatsCardPreview(){
-//    StatsCard()
-//}
-
-//@Preview
-//@Composable
-//fun DeleteProfileCardPreview(){
-//    DeleteProfileCard()
-//}
-
-//@Preview(showBackground = true)
-//@Composable
-//fun ProfileScreenPreview(){
-//    ProfileScreen()
-//}

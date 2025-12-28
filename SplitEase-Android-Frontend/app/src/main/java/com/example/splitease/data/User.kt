@@ -10,7 +10,6 @@ data class User(
     val name: String,
     val password: String,
     val email: String,
-    val upiId: String,
     val phoneNumber: String,
     val createdAt: Long = System.currentTimeMillis()
 )

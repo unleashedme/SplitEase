@@ -14,9 +14,6 @@ import java.util.Objects;
 public class DashboardService {
 
     @Autowired
-    private SettlementRepo settlementRepo;
-
-    @Autowired
     private ExpenseSplitRepo expenseSplitRepo;
 
     @Autowired
@@ -80,7 +77,7 @@ public class DashboardService {
         BigDecimal totalExpenses = userSplits.stream()
                 .map(ExpenseSplits::getShareAmount)
                 .filter(Objects::nonNull)
-                .reduce(BigDecimal.ZERO, (a, b) -> a.add(b));
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
 
         return new DashboardSummaryDTO(

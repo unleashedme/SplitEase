@@ -1,5 +1,6 @@
 package com.example.splitease.ui.screens
 
+import androidx.activity.ComponentActivity
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -27,6 +28,7 @@ import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -35,6 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
@@ -49,7 +52,9 @@ import com.example.splitease.ui.SplitEaseTopAppBar
 import com.example.splitease.ui.model.GroupDetailResponse
 import com.example.splitease.ui.model.GroupScreenDataResponse
 import com.example.splitease.ui.navigation.NavigationDestination
+import com.example.splitease.ui.viewmodel.ActivityViewModel
 import com.example.splitease.ui.viewmodel.CreateGroupViewModel
+import com.example.splitease.ui.viewmodel.DashboardViewModel
 import com.example.splitease.ui.viewmodel.GroupListViewModel
 import com.example.splitease.ui.viewmodel.GroupSortOrder
 import com.example.splitease.ui.viewmodel.GroupViewModel
@@ -66,16 +71,22 @@ fun GroupScreen(
     navController: NavHostController,
     groupViewModel: GroupViewModel,
     onGroupViewDetailClick: (String) -> Unit,
+    modifier: Modifier = Modifier,
     createGroupViewModel: CreateGroupViewModel = viewModel(factory = CreateGroupViewModel.Factory),
     groupListViewModel: GroupListViewModel = viewModel(factory = GroupListViewModel.Factory),
-    modifier: Modifier = Modifier
+    dashboardViewModel: DashboardViewModel = viewModel(factory = DashboardViewModel.Factory),
+    activityViewModel: ActivityViewModel = viewModel(factory = ActivityViewModel.Factory)
 ){
     var showCreateGroupPopUp by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        groupViewModel.getGroupScreenData()
+    }
 
     val groupUiData = groupViewModel.groupUiState
 
     val selectedPreference by groupViewModel.groupSortOrder.collectAsState()
-    val sortedExpenseList by groupViewModel.sortedGroupList.collectAsState()
+    val sortedGroupList by groupViewModel.sortedGroupList.collectAsState()
     var preferenceListExpanded by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -183,7 +194,7 @@ fun GroupScreen(
                                             )
                                         },
                                         onClick = {
-                                            groupViewModel.updateSortOrder(selectedPreference.displayName)
+                                            groupViewModel.updateSortOrder(preference.displayName)
                                             preferenceListExpanded = false
                                         }
                                     )
@@ -219,7 +230,7 @@ fun GroupScreen(
             }
             item{
                 GroupList(
-                    groups = sortedExpenseList,
+                    groups = sortedGroupList,
                     onGroupViewDetailClick = onGroupViewDetailClick,
                     modifier = Modifier
                         .padding(dimensionResource(R.dimen.smallPadding))
@@ -235,12 +246,19 @@ fun GroupScreen(
             CreateGroupPopUp(createGroupUiState = createGroupViewModel.createGroupUiState,
                 onNameChange = createGroupViewModel::updateUiState,
                 onEmailChange = createGroupViewModel::updateMemberEmail,
-                onClose = { showCreateGroupPopUp = false },
+                onClose = {
+                    showCreateGroupPopUp = false
+                    createGroupViewModel.resetUiState()
+                },
                 onAddMemberClick = {createGroupViewModel.addMember()},
                 onCreateGroupClick = {
                     createGroupViewModel.createGroup {
                         showCreateGroupPopUp = false
+                        groupViewModel.getGroupScreenData()
+                        activityViewModel.getActivity()
+                        dashboardViewModel.getDashboardStat()
                         groupListViewModel.getGroupList()
+                        createGroupViewModel.resetUiState()
                     }
                 }
             )

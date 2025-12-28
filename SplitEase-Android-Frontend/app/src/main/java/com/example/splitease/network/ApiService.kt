@@ -14,8 +14,12 @@ import com.example.splitease.ui.model.SettlementSummary
 import com.example.splitease.ui.model.UserGroupResponse
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.PUT
+import retrofit2.http.Path
+import retrofit2.http.Query
 
 interface ApiService {
 
@@ -29,7 +33,8 @@ interface ApiService {
     suspend fun createGroup(@Body group : GroupDto): Response<CreateGroupResponse>
 
     @POST("expense")
-    suspend fun addExpense(@Body expense : ExpenseDto): String
+    suspend fun addExpense(@Body expense : ExpenseDto): Response<Unit>
+
 
     @GET("myGroups")
     suspend fun getMyGroups(): List<UserGroupResponse>
@@ -48,6 +53,15 @@ interface ApiService {
 
     @GET("dashboard")
     suspend fun getDashboardStats(): DashboardStatResponse
+
+    @DELETE("group/{id}")
+    suspend fun deleteGroup(@Path("id") id: String): Response<Unit>
+
+    @DELETE("expense/{id}")
+    suspend fun deleteExpense(@Path("id") id: String): Response<Unit>
+
+    @PUT("update-token")
+    suspend fun updateFcmToken(@Query("token") token: String): Response<Unit>
 
 }
 

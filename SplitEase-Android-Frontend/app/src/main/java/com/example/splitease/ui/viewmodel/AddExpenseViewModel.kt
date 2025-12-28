@@ -22,7 +22,11 @@ class AddExpenseViewModel(private val repository : Repository) : ViewModel() {
         this.addExpenseUiState = addExpenseUiState
     }
 
-    fun addExpense(groupId: String){
+    fun resetUiState(){
+        addExpenseUiState = AddExpenseUiState()
+    }
+
+    fun addExpense(groupId: String, onSuccess:() -> Unit){
         if(groupId.isBlank() || addExpenseUiState.description.isBlank()
             || addExpenseUiState.amount.toDouble() <= 0.0) return
         viewModelScope.launch {
@@ -33,6 +37,7 @@ class AddExpenseViewModel(private val repository : Repository) : ViewModel() {
                     description = addExpenseUiState.description
                 )
                 println("Add Expense called is Successfully")
+                onSuccess()
             }catch (e: Exception){
                 println("ADD EXPENSE: exception = ${e::class.java} ${e.message}")
             }
