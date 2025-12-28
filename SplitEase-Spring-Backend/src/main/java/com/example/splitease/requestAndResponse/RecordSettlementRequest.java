@@ -4,18 +4,9 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 public class RecordSettlementRequest {
-    private UUID groupId;
     private UUID toUserId;
     private BigDecimal amount;
     private String note;
-
-    public UUID getGroupId() {
-        return groupId;
-    }
-
-    public void setGroupId(UUID groupId) {
-        this.groupId = groupId;
-    }
 
     public UUID getToUserId() {
         return toUserId;

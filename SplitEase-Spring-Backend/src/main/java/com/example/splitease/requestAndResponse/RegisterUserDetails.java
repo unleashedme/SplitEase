@@ -4,7 +4,6 @@ public class RegisterUserDetails {
     private String name;
     private String email;
     private String phone;
-    private String upiId;
     private String password;
 
     public String getName() {
@@ -29,14 +28,6 @@ public class RegisterUserDetails {
 
     public void setEmail(String email) {
         this.email = email;
-    }
-
-    public String getUpiId() {
-        return upiId;
-    }
-
-    public void setUpiId(String upiId) {
-        this.upiId = upiId;
     }
 
     public String getPassword() {

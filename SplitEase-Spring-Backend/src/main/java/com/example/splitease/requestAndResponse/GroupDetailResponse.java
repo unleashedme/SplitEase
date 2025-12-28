@@ -13,6 +13,5 @@ public record GroupDetailResponse(
         int memberCount,
         BigDecimal userShare,
         List<String> memberNames,
-        List<SettlementDTO> settlements,
         List<ExpenseDTO> expenses
 ) {}

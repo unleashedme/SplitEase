@@ -35,12 +35,11 @@ class SettlementViewModel(private val repository: Repository): ViewModel(){
         }
     }
 
-    fun recordPayment(groupId: String, toUserId: String, amount: Double, note: String = "", onSuccess:() -> Unit){
+    fun recordPayment(toUserId: String, amount: Double, note: String = "", onSuccess:() -> Unit){
         viewModelScope.launch{
             try{
                 repository.recordSettlement(
                     SettlementDto(
-                        groupId = groupId,
                         toUserId = toUserId,
                         amount = amount,
                         note = note,

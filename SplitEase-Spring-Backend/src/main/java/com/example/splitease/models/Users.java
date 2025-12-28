@@ -21,9 +21,6 @@ public class Users {
     @Column(unique = true, nullable = false)
     private String phone;
 
-    @Column(name = "upi_id", nullable = false)
-    private String upiId;
-
     @Column(nullable = false)
     private String password;
 
@@ -32,6 +29,17 @@ public class Users {
 
     @Column(name = "last_active_at")
     private Instant lastActiveAt;
+
+    public String getFcmToken() {
+        return fcmToken;
+    }
+
+    public void setFcmToken(String fcmToken) {
+        this.fcmToken = fcmToken;
+    }
+
+    @Column(name = "fcm_token")
+    private String fcmToken;
 
     public UUID getId() {
         return id;
@@ -65,14 +73,6 @@ public class Users {
         this.phone = phone;
     }
 
-    public String getUpiId() {
-        return upiId;
-    }
-
-    public void setUpiId(String upiId) {
-        this.upiId = upiId;
-    }
-
     public Instant getLastActiveAt() {
         return lastActiveAt;
     }
@@ -100,7 +100,6 @@ public class Users {
                 ", name='" + name + '\'' +
                 ", email='" + email + '\'' +
                 ", phone='" + phone + '\'' +
-                ", UpiId='" + upiId + '\'' +
                 ", password='" + password + '\'' +
                 ", createdAt=" + createdAt +
                 ", lastActiveAt=" + lastActiveAt +

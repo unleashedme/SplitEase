@@ -1,6 +1,10 @@
 package com.example.splitease.ui.screens
 
 
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -40,6 +44,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -50,6 +55,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -58,8 +64,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import com.example.splitease.FCMHandler
 import com.example.splitease.R
 import com.example.splitease.ui.SplitEaseBottomBar
 import com.example.splitease.ui.SplitEaseTopAppBar
@@ -79,6 +87,8 @@ import com.example.splitease.ui.viewmodel.GroupListViewModel
 import com.example.splitease.ui.viewmodel.GroupViewModel
 import com.example.splitease.ui.viewmodel.SettlementViewModel
 import com.example.splitease.ui.viewmodel.SortPreference
+import android.Manifest
+import com.example.splitease.data.Repository
 
 
 object DashboardDestination: NavigationDestination {
@@ -105,7 +115,6 @@ fun DashboardScreen(
     var showSettleUpPopUp by remember { mutableStateOf(false) }
 
     val groups = groupListViewModel.groupListUiState.groups
-    val settlements = settlementViewModel.settlements
 
     val groupDetailList = groupViewModel.groupUiState?.groups?:emptyList()
     val activeGroups: List<GroupDetailResponse> = groupDetailList.filter { it.isActive }
@@ -259,12 +268,18 @@ fun DashboardScreen(
                 createGroupUiState = createGroupViewModel.createGroupUiState,
                 onNameChange = createGroupViewModel::updateUiState,
                 onEmailChange = createGroupViewModel::updateMemberEmail,
-                onClose = { showCreateGroupPopUp = false },
+                onClose = {
+                    showCreateGroupPopUp = false
+                    createGroupViewModel.resetUiState()
+                },
                 onAddMemberClick = {createGroupViewModel.addMember()},
                 onCreateGroupClick = {
                     createGroupViewModel.createGroup {
                         showCreateGroupPopUp = false
                         groupListViewModel.getGroupList()
+                        groupViewModel.getGroupScreenData()
+                        dashboardViewModel.getDashboardStat()
+                        createGroupViewModel.resetUiState()
                     }
                 }
             )
@@ -278,13 +293,15 @@ fun DashboardScreen(
                 addExpenseUiState = addExpenseViewModel.addExpenseUiState,
                 onValueChange = addExpenseViewModel::updateUiState,
                 groupsList = groups,
-                onAddExpenseClick = {
-                    addExpenseViewModel.addExpense(it)
-                    settlementViewModel.loadSettlements()
-                    activityViewModel.getActivity()
+                settlementViewModel = settlementViewModel,
+                activityViewModel = activityViewModel,
+                dashboardViewModel = dashboardViewModel,
+                groupViewModel = groupViewModel,
+                addExpenseViewModel = addExpenseViewModel,
+                onClose = {
                     showAddExpensePopUp = false
-                },
-                onClose = { showAddExpensePopUp = false }
+                    addExpenseViewModel.resetUiState()
+                }
             )
         }
     }
@@ -293,9 +310,10 @@ fun DashboardScreen(
             onDismissRequest = { showSettleUpPopUp = false }
         ) {
             SettleUpPopUp(
-                settlements = settlements,
                 settlementViewModel = settlementViewModel,
                 activityViewModel = activityViewModel,
+                dashboardViewModel = dashboardViewModel,
+                groupViewModel = groupViewModel,
                 onClose = { showSettleUpPopUp = false}
             )
         }
@@ -1037,7 +1055,11 @@ fun AddExpensePopUp(
     groupsList: List<UserGroupResponse>,
     addExpenseUiState: AddExpenseUiState,
     onValueChange: (AddExpenseUiState) -> Unit,
-    onAddExpenseClick: (String) -> Unit,
+    settlementViewModel: SettlementViewModel,
+    activityViewModel: ActivityViewModel,
+    dashboardViewModel: DashboardViewModel,
+    groupViewModel: GroupViewModel,
+    addExpenseViewModel: AddExpenseViewModel,
     onClose: () -> Unit,
     modifier: Modifier = Modifier
 ){
@@ -1205,7 +1227,16 @@ fun AddExpensePopUp(
             }
             Spacer(modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding)))
             FilledIconButton(
-                onClick = { onAddExpenseClick(selectedGroup?.groupId.toString()) },
+                onClick = {
+                    addExpenseViewModel.addExpense(selectedGroup?.groupId?:""){
+                        onClose()
+                        groupViewModel.getGroupScreenData()
+                        dashboardViewModel.getDashboardStat()
+                        settlementViewModel.loadSettlements()
+                        activityViewModel.getActivity()
+                        addExpenseViewModel.resetUiState()
+                    }
+                },
                 shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1244,12 +1275,16 @@ fun SettleUpPopUp(
     onClose: () -> Unit,
     settlementViewModel: SettlementViewModel,
     activityViewModel: ActivityViewModel,
-    settlements: List<SettlementSummary>,
+    dashboardViewModel: DashboardViewModel,
+    groupViewModel: GroupViewModel,
     modifier: Modifier = Modifier
 ){
     var note by remember { mutableStateOf("") }
     var expanded by remember { mutableStateOf(false) }
     var selectedDebt by remember { mutableStateOf<SettlementSummary?>(null) }
+
+    val settlements = settlementViewModel.settlements
+
 
     Card(
         colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -1343,10 +1378,6 @@ fun SettleUpPopUp(
                                         text = "${selectedDebt?.toUserName} - ₹${selectedDebt?.amount}",
                                         fontWeight = FontWeight.Bold
                                     )
-                                    Text(
-                                        text = "(${selectedDebt?.groupName})",
-                                        color = Color.DarkGray
-                                    )
                                 }
                             }
                             if (expanded) {
@@ -1393,10 +1424,6 @@ fun SettleUpPopUp(
                                     Text(
                                         text = "${debt.toUserName} - ₹${debt.amount}",
                                         fontWeight = FontWeight.Bold
-                                    )
-                                    Text(
-                                        text = " ( ${debt.groupName} )",
-                                        color = Color.DarkGray
                                     )
                                 }
                             },
@@ -1447,12 +1474,13 @@ fun SettleUpPopUp(
             FilledIconButton(
                 onClick = {
                     settlementViewModel.recordPayment(
-                        groupId = selectedDebt?.groupId?:"",
                         toUserId = selectedDebt?.toUserId?:"",
                         amount = selectedDebt?.amount?:0.0,
                         note = note
                     ) {
                         onClose()
+                        groupViewModel.getGroupScreenData()
+                        dashboardViewModel.getDashboardStat()
                         settlementViewModel.loadSettlements()
                         activityViewModel.getActivity()
                     }
@@ -1512,5 +1540,28 @@ fun GroupAvatar(
             fontWeight = FontWeight.Medium,
             fontSize = 20.sp
         )
+    }
+}
+
+@Composable
+fun NotificationSetup(repository: Repository) {
+    val context = LocalContext.current
+    val launcher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) FCMHandler.syncTokenWithServer(repository)
+    }
+
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val status = ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
+            if (status != PackageManager.PERMISSION_GRANTED) {
+                launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            } else {
+                FCMHandler.syncTokenWithServer(repository)
+            }
+        } else {
+            FCMHandler.syncTokenWithServer(repository)
+        }
     }
 }

@@ -4,7 +4,6 @@ data class UserDto(
     val name: String,
     val email: String,
     val phone: String,
-    val upiId: String,
     val password: String
 )
 
@@ -31,7 +30,6 @@ data class ExpenseSplitDto(
 
 
 data class SettlementDto(
-    val groupId: String,
     val toUserId: String,
     val amount: Double,
     val note: String

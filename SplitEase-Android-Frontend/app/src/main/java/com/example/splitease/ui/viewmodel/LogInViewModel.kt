@@ -63,8 +63,7 @@ class LogInViewModel(private val repository: Repository, private val authStore: 
                         result.token,
                         result.name,
                         result.email,
-                        result.phone,
-                        result.upiId
+                        result.phone
                     )
                     _navigateToDashboard.emit(Unit)
                     loginState = LoginState.Success(result)

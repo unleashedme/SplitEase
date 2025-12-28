@@ -75,6 +75,7 @@ fun LogInScreen(
             Image(
                 painter = painterResource(R.drawable.splitease_logo_without_bottom_tag),
                 contentDescription = "SplitEase logo",
+                modifier = Modifier.size(180.dp)
             )
             Spacer(modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding)))
         }
@@ -102,6 +103,9 @@ fun LogInScreen(
                 modifier = Modifier
                     .padding(dimensionResource(R.dimen.smallPadding))
             )
+        }
+        item {
+            Spacer(modifier = Modifier.padding(vertical = 80.dp))
         }
     }
 }

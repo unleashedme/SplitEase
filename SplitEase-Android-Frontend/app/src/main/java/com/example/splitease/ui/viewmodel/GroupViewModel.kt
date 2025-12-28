@@ -60,7 +60,7 @@ class GroupViewModel(private val repository: Repository): ViewModel(){
         }
     }
 
-    val sortedGroupList = combine(_groupUiData, groupSortOrder){ data,pref ->
+    val sortedGroupList = combine(_groupUiData, _groupSortOrder){ data,pref ->
         val list = data?.groups?:emptyList()
         when(pref){
             GroupSortOrder.NAME_AZ -> list.sortedBy { it.groupName.lowercase() }
@@ -75,6 +75,18 @@ class GroupViewModel(private val repository: Repository): ViewModel(){
     fun updateSortOrder(displayName: String){
         val pref = GroupSortOrder.entries.find { it.displayName == displayName }
         if(pref != null) _groupSortOrder.value = pref
+    }
+
+    fun deleteGroup(groupId: String, onSuccess:() -> Unit){
+        viewModelScope.launch {
+            try {
+                repository.deleteGroup(groupId = groupId)
+                println("GroupDelete: deletingGroupData success")
+                onSuccess()
+            }catch (e: Exception){
+                println("GroupDelete: exception = ${e::class.java} ${e.message}")
+            }
+        }
     }
 
     companion object{

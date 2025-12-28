@@ -6,12 +6,18 @@ import com.example.splitease.repo.ExpenseRepo;
 import com.example.splitease.repo.ExpenseSplitRepo;
 import com.example.splitease.requestAndResponse.ActivityDashboardResponse;
 import com.example.splitease.requestAndResponse.ExpenseActivityDTO;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
+import java.nio.file.AccessDeniedException;
+import java.security.Principal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class ActivityService {

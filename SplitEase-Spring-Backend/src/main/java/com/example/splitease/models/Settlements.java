@@ -13,9 +13,6 @@ public class Settlements {
     @GeneratedValue
     private UUID id;
 
-    @ManyToOne
-    @JoinColumn(name = "group_id")
-    private Groups group;
 
     @ManyToOne
     @JoinColumn(name = "from_user")
@@ -71,14 +68,6 @@ public class Settlements {
         this.fromUser = fromUser;
     }
 
-    public Groups getGroup() {
-        return group;
-    }
-
-    public void setGroup(Groups group) {
-        this.group = group;
-    }
-
     public UUID getId() {
         return id;
     }
@@ -91,7 +80,6 @@ public class Settlements {
     public String toString() {
         return "Settlements{" +
                 "id=" + id +
-                ", group=" + group +
                 ", fromUser=" + fromUser +
                 ", toUser=" + toUser +
                 ", amount=" + amount +

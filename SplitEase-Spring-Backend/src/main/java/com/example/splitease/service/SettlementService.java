@@ -32,83 +32,80 @@ public class SettlementService {
     @Autowired
     private UserRepo userRepo;
 
+    @Autowired
+    private NotificationService notificationService;
+
 
     public List<SettlementSummaryResponse> getMyPayables(String userEmail) {
         Users currentUser = userRepo.findByEmail(userEmail);
 
-        List<SettlementSummaryResponse> allPayables = new ArrayList<>();
+        // 1. Use a single optimized query to get net balances with everyone
+        // You can also write a custom native query if JPA logic gets too complex
+        List<Object[]> rawBalances = expenseSplitRepo.calculateNetBalances(currentUser.getId());
 
-        // find all groups this user is in
-        List<GroupMembers> userMemberships = groupMemberRepo.findByUserEmail(userEmail);
+        List<SettlementSummaryResponse> payables = new ArrayList<>();
 
-        for (GroupMembers membership : userMemberships) {
-            Groups currentGroup = membership.getGroup();
+        for (Object[] row : rawBalances) {
+            String otherUserId = row[0].toString();
+            String otherUserName = (String) row[1];
+            BigDecimal balance = (BigDecimal) row[2];
 
-            // find all other members in this group
-            List<GroupMembers> allGroupMembers = groupMemberRepo.findByGroupId(currentGroup.getId());
-
-            for (GroupMembers otherMemberEntry : allGroupMembers) {
-                Users otherUser = otherMemberEntry.getUser();
-
-                // Skip if comparing user to themselves
-                if (otherUser.getId().equals(currentUser.getId())) continue;
-
-                // calculate how much I owe them in this group (Unsettled only)
-                BigDecimal iOweThem = expenseSplitRepo.findTotalOwedByTo(
-                        currentUser.getId(), otherUser.getId(), currentGroup.getId());
-                iOweThem = (iOweThem != null) ? iOweThem : BigDecimal.ZERO;
-
-                // calculate how much they owe me in this group (Unsettled only)
-                BigDecimal theyOweMe = expenseSplitRepo.findTotalOwedByTo(
-                        otherUser.getId(), currentUser.getId(), currentGroup.getId());
-                theyOweMe = (theyOweMe != null) ? theyOweMe : BigDecimal.ZERO;
-
-                // net calculation
-                BigDecimal netBalance = iOweThem.subtract(theyOweMe);
-
-                // if positive, it's a payable for the current user
-                if (netBalance.compareTo(BigDecimal.ZERO) > 0) {
-                    allPayables.add(new SettlementSummaryResponse(
-                            otherUser.getId(),
-                            otherUser.getName(),
-                            netBalance,
-                            currentGroup.getId(),
-                            currentGroup.getName()
-                    ));
-                }
+            // If balance > 0, I owe them. If < 0, they owe me.
+            if (balance.compareTo(BigDecimal.ZERO) > 0) {
+                payables.add(new SettlementSummaryResponse(
+                        otherUserId,
+                        otherUserName,
+                        balance
+                ));
             }
         }
-        return allPayables;
+        return payables;
     }
 
 
     @Transactional
     public void recordSettlement(RecordSettlementRequest request, String fromUserEmail) {
-        // fetch the entities
+        // 1. Fetch Entities
         Users fromUser = userRepo.findByEmail(fromUserEmail);
         Users toUser = userRepo.findById(request.getToUserId())
                 .orElseThrow(() -> new RuntimeException("Receiver not found"));
-        Groups group = groupRepo.findById(request.getGroupId())
-                .orElseThrow(() -> new RuntimeException("Group not found"));
 
-        // create and save the Settlement record
+
+        // 2. Create and Save Settlement record (Audit Trail)
         Settlements settlement = new Settlements();
         settlement.setFromUser(fromUser);
         settlement.setToUser(toUser);
-        settlement.setGroup(group);
         settlement.setAmount(request.getAmount());
         settlement.setNote(request.getNote());
         settlementRepo.save(settlement);
 
-        // mark related splits as settled (true), so they won't appear in getMyPayables next time
-        // find all splits where 'fromUser' owed 'toUser' in this specific group
-        List<ExpenseSplits> unsettledSplits = expenseSplitRepo
-                .findByUserAndExpense_PayerAndExpense_GroupAndSettledFalse(fromUser, toUser, group);
+        // 3. Mark ALL splits between these two users as settled (Both Directions)
+        // We fetch splits where From owes To or To owes From
+        List<ExpenseSplits> allRelatedSplits = expenseSplitRepo.findAllUnsettledBetweenUsers(
+                fromUser.getId(),
+                toUser.getId()
+        );
 
-        for (ExpenseSplits split : unsettledSplits) {
+        for (ExpenseSplits split : allRelatedSplits) {
             split.setSettled(true);
         }
+        expenseSplitRepo.saveAll(allRelatedSplits);
 
-        expenseSplitRepo.saveAll(unsettledSplits);
+
+
+        // 4. Trigger Push Notification to Receiver
+        String token = toUser.getFcmToken();
+        if (token != null && !token.trim().isEmpty()) {
+            try {
+                notificationService.sendPushNotification(
+                        token,
+                        "Payment Received",
+                        fromUser.getName() + " settled up ₹" + request.getAmount()
+                );
+            } catch (Exception e) {
+                // Log the error but don't fail the transaction if notification fails
+                System.err.println("Notification failed: " + e.getMessage());
+            }
+        }
     }
 }

@@ -9,6 +9,5 @@ data class LogInResponse(
     val token: String,
     val name: String,
     val email: String,
-    val phone: String,
-    val upiId: String
+    val phone: String
 )

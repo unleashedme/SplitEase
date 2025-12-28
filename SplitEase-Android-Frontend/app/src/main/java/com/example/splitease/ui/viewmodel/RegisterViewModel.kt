@@ -40,7 +40,7 @@ class RegisterViewModel(private val repository: Repository): ViewModel() {
 
     private fun validateRegisterInput(uiState: UserDetails = registerUiState.userDetails): Boolean{
         with(uiState){
-            return name.isNotBlank() && email.isNotBlank() && mobileNumber.isNotBlank() && password.isNotBlank() && upiId.isNotBlank()
+            return name.isNotBlank() && email.isNotBlank() && mobileNumber.isNotBlank() && password.isNotBlank()
                     && password == confirmPassword && email.endsWith("@gmail.com") && mobileNumber.length == 10
         }
     }
@@ -57,7 +57,6 @@ class RegisterViewModel(private val repository: Repository): ViewModel() {
                             name = registerUiState.userDetails.name,
                             email = registerUiState.userDetails.email,
                             phone = registerUiState.userDetails.mobileNumber,
-                            upiId = registerUiState.userDetails.upiId,
                             password = registerUiState.userDetails.password
                         )
                     )
@@ -92,7 +91,6 @@ data class UserDetails(
     val name: String = "",
     val email: String = "",
     val mobileNumber: String = "",
-    val upiId: String = "",
     val password: String = "",
     val confirmPassword: String = ""
 )

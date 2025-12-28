@@ -7,11 +7,9 @@ import com.example.splitease.requestAndResponse.UserGroupResponse;
 import com.example.splitease.service.GroupService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
+import java.nio.file.AccessDeniedException;
 import java.security.Principal;
 import java.util.List;
 import java.util.Map;
@@ -43,5 +41,11 @@ public class GroupController {
     @GetMapping("/group")
     public ResponseEntity<GroupDataResponse> getGroupData(Principal principal){
         return ResponseEntity.ok(groupService.getGroupScreenData(principal.getName()));
+    }
+
+    @DeleteMapping("/group/{id}")
+    public ResponseEntity<?> deleteGroup(@PathVariable("id") UUID id, Principal principal) throws AccessDeniedException {
+        groupService.deleteGroup(id, principal.getName());
+        return ResponseEntity.ok().build();
     }
 }

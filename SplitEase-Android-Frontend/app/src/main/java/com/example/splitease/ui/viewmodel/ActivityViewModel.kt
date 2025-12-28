@@ -83,6 +83,18 @@ class ActivityViewModel(private val repository: Repository): ViewModel() {
         if (pref != null) _sortPreference.value = pref
     }
 
+    fun deleteExpense(expenseId: String, onSuccess:() -> Unit){
+        viewModelScope.launch{
+            try{
+                repository.deleteExpense(expenseId)
+                println("Expense Delete: success")
+                onSuccess()
+            }catch(e: Exception){
+                println("Expense Delete: exception = ${e::class.java} ${e.message}")
+            }
+        }
+    }
+
     companion object{
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {

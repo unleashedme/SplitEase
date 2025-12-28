@@ -33,14 +33,23 @@ class CreateGroupViewModel(private val repository: Repository): ViewModel() {
         createGroupUiState = createGroupUiState.copy( members = createGroupUiState.members + "" )
     }
 
+    fun resetUiState(){
+        createGroupUiState = CreateGroupUiState()
+    }
+
     fun createGroup(onSuccess: () -> Unit){
-        viewModelScope.launch{
-            try{
-                repository.createGroup(groupName = createGroupUiState.name, members = createGroupUiState.members)
-                onSuccess()
-                println("CREATE GROUP: name = ${createGroupUiState.name}, members = ${createGroupUiState.members}")
-            }catch (e: Exception){
-                println("CREATE GROUP: exception = ${e::class.java} ${e.message}")
+        if(createGroupUiState.members.size<=4){
+            viewModelScope.launch {
+                try {
+                    repository.createGroup(
+                        groupName = createGroupUiState.name,
+                        members = createGroupUiState.members
+                    )
+                    onSuccess()
+                    println("CREATE GROUP: name = ${createGroupUiState.name}, members = ${createGroupUiState.members}")
+                } catch (e: Exception) {
+                    println("CREATE GROUP: exception = ${e::class.java} ${e.message}")
+                }
             }
         }
     }

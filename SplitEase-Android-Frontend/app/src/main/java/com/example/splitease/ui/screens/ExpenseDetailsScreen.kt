@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -27,7 +28,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -78,6 +82,12 @@ fun ExpenseDetailsScreen(
             item {
                 if(expense!=null){
                     ExpenseDetailCard(
+                        onExpenseDeleteClicked = {
+                            activityViewModel.deleteExpense(expenseId){
+                                activityViewModel.getActivity()
+                                navigateBack()
+                            }
+                        },
                         navigateBack = navigateBack,
                         expense = expense,
                         modifier = Modifier
@@ -103,9 +113,12 @@ fun ExpenseDetailsScreen(
 @Composable
 fun ExpenseDetailCard(
     navigateBack: () -> Unit,
+    onExpenseDeleteClicked:() -> Unit,
     expense: ActivityExpenseDto,
     modifier: Modifier = Modifier
 ){
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(Color.White),
@@ -131,7 +144,8 @@ fun ExpenseDetailCard(
                     Icon(
                         painter = painterResource(R.drawable.left_96),
                         contentDescription = "back Icon",
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier
+                            .size(20.dp)
                             .padding(end = dimensionResource(R.dimen.smallPadding)),
                         tint = Color.Black
                     )
@@ -240,27 +254,7 @@ fun ExpenseDetailCard(
             }
             if(expense.userWasPayer){
                 OutlinedButton(
-                    onClick = {/*TODO*/ },
-                    shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),
-                    colors = ButtonDefaults.elevatedButtonColors(Color.White),
-                    border = BorderStroke(1.dp, Color.LightGray),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.edit_96),
-                        contentDescription = "edit Icon",
-                        tint = Color.Black,
-                        modifier = Modifier
-                            .size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding)))
-                    Text(
-                        text = "Edit Expense",
-                        color = Color.Black
-                    )
-                }
-                OutlinedButton(
-                    onClick = {/*TODO*/ },
+                    onClick = { showDeleteDialog = true },
                     shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),
                     colors = ButtonDefaults.elevatedButtonColors(Color.White),
                     border = BorderStroke(1.dp, Color.LightGray),
@@ -275,6 +269,18 @@ fun ExpenseDetailCard(
                 }
             }
         }
+    }
+
+    if (showDeleteDialog) {
+        DeleteConfirmationDialog(
+            title = "Delete Expense?",
+            content = "This will permanently remove this expense and update everyone's balances. This cannot be undone.",
+            onConfirm = {
+                showDeleteDialog = false
+                onExpenseDeleteClicked()
+            },
+            onDismiss = { showDeleteDialog = false }
+        )
     }
 }
 
@@ -313,14 +319,16 @@ fun SplitDetailCard(
             SplitCard(
                 name = "You",
                 expense = expense,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
                     .padding(dimensionResource(R.dimen.smallPadding))
             )
             if(expense.owesToName!=null){
                 SplitCard(
                     name = expense.owesToName,
                     expense = expense,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
                         .padding(dimensionResource(R.dimen.smallPadding))
                 )
             }
@@ -328,7 +336,8 @@ fun SplitDetailCard(
                 SplitCard(
                     name = "Others",
                     expense = expense,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
                         .padding(dimensionResource(R.dimen.smallPadding))
                 )
             }
@@ -435,6 +444,32 @@ fun SplitCard(
 }
 
 @Composable
+fun DeleteConfirmationDialog(
+    title: String,
+    content: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(text = title) },
+        text = { Text(text = content) },
+        confirmButton = {
+            TextButton(
+                onClick = onConfirm,
+                colors = ButtonDefaults.textButtonColors(contentColor = Color.Red)
+            ) {
+                Text("Delete Group")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+@Composable
 fun UserAvatar(
     name: String,
     modifier: Modifier = Modifier
@@ -459,66 +494,3 @@ fun UserAvatar(
         )
     }
 }
-
-
-//@Preview
-//@Composable
-//fun ExpenseDetailCardPreview(){
-//    ExpenseDetailCard(
-//        expense = Expense(
-//            expenseId = 1,
-//            groupId = 1,
-//            payerId = 2,
-//            amount = 100.00,
-//            description = "Dinner at Kaveri",
-//            createdAt = LocalDate.now(),
-//        ),
-//        groupName = "Group 1"
-//    )
-//}
-
-
-//@Preview
-//@Composable
-//fun SplitDetailCardPreview(){
-//    SplitDetailCard(
-//        expense = Expense(
-//            expenseId = 1,
-//            groupId = 1,
-//            payerId = 2,
-//            amount = 100.00,
-//            description = "Dinner at Kaveri",
-//            createdAt = LocalDate.now(),
-//        )
-//    )
-//}
-
-
-//@Preview
-//@Composable
-//fun SplitCardPreview(){
-//    SplitCard(
-//        member = User(
-//            id = 3,
-//            name = "Harsh Raj",
-//            password = "123456",
-//            email = "harsh123@gmail.com",
-//            upiId = "1234@oksbi",
-//            phoneNumber = "9155916131"
-//        ),
-//        expense = Expense(
-//            expenseId = 1,
-//            groupId = 1,
-//            payerId = 2,
-//            amount = 100.00,
-//            description = "Dinner at Kaveri",
-//            createdAt = LocalDate.now(),
-//        )
-//    )
-//}
-
-//@Preview(showBackground = true)
-//@Composable
-//fun ExpenseDetailScreenPreview(){
-//    ExpenseDetailsScreen()
-//}
