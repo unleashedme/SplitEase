@@ -44,7 +44,7 @@ import androidx.compose.ui.unit.sp
 import com.example.splitease.R
 import com.example.splitease.ui.model.ExpenseDTO
 import com.example.splitease.ui.navigation.NavigationDestination
-import com.example.splitease.ui.viewmodel.GroupViewModel
+import com.example.splitease.viewmodel.GroupViewModel
 
 object GroupDetailsDestination : NavigationDestination {
     override val route = "group_details"
@@ -90,8 +90,9 @@ fun GroupDetailsScreen(
                     noOfMembers = groupDetail?.memberCount?:0,
                     onDeleteGroupClicked = {
                         groupViewModel.deleteGroup(groupId){
-                            groupViewModel.getGroupScreenData()
                             navigateBack()
+                            groupViewModel.getGroupScreenData()
+
                         }
                     },
                     modifier = Modifier

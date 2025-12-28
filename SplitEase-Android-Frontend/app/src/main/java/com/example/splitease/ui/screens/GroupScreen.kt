@@ -1,6 +1,5 @@
 package com.example.splitease.ui.screens
 
-import androidx.activity.ComponentActivity
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -37,7 +36,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
@@ -52,12 +50,12 @@ import com.example.splitease.ui.SplitEaseTopAppBar
 import com.example.splitease.ui.model.GroupDetailResponse
 import com.example.splitease.ui.model.GroupScreenDataResponse
 import com.example.splitease.ui.navigation.NavigationDestination
-import com.example.splitease.ui.viewmodel.ActivityViewModel
-import com.example.splitease.ui.viewmodel.CreateGroupViewModel
-import com.example.splitease.ui.viewmodel.DashboardViewModel
-import com.example.splitease.ui.viewmodel.GroupListViewModel
-import com.example.splitease.ui.viewmodel.GroupSortOrder
-import com.example.splitease.ui.viewmodel.GroupViewModel
+import com.example.splitease.viewmodel.ActivityViewModel
+import com.example.splitease.viewmodel.CreateGroupViewModel
+import com.example.splitease.viewmodel.DashboardViewModel
+import com.example.splitease.viewmodel.GroupListViewModel
+import com.example.splitease.viewmodel.GroupSortOrder
+import com.example.splitease.viewmodel.GroupViewModel
 
 object GroupDestination: NavigationDestination {
 
@@ -286,14 +284,14 @@ fun GroupStatsList(
             StatCard(
                 cardHeading = "Total Groups",
                 cardIcon = R.drawable.people_96,
-                cardData = "${groupUiData?.totalGroups}",
+                cardData = "${groupUiData?.totalGroups?:0}",
                 cardDescription = "${groupUiData?.activeGroupsCount} active",
                 modifier = Modifier.weight(1f)
             )
             StatCard(
                 cardHeading = "Total Members",
                 cardIcon = R.drawable.person_96,
-                cardData = "${groupUiData?.totalMembersAcrossGroups}",
+                cardData = "${groupUiData?.totalMembersAcrossGroups?:0}",
                 cardDescription = "Across all groups",
                 modifier = Modifier.weight(1f)
             )
@@ -306,14 +304,14 @@ fun GroupStatsList(
             StatCard(
                 cardHeading = "Total Expenses",
                 cardIcon = R.drawable.rupee_96,
-                cardData = "₹ ${groupUiData?.totalExpenses}",
+                cardData = "₹ ${groupUiData?.totalExpenses?:0.0}",
                 cardDescription = "Combined spending",
                 modifier = Modifier.weight(1f)
             )
             StatCard(
                 cardHeading = "Active Groups",
                 cardIcon = R.drawable.increase_96,
-                cardData = "${groupUiData?.activeGroupsCount}",
+                cardData = "${groupUiData?.activeGroupsCount?:0}",
                 cardDescription = "Currently tracking",
                 modifier = Modifier.weight(1f),
                 cardColor = MaterialTheme.colorScheme.inverseOnSurface,

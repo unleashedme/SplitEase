@@ -1,4 +1,4 @@
-package com.example.splitease.ui.viewmodel
+package com.example.splitease.viewmodel
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -11,25 +11,25 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.splitease.data.Repository
 import com.example.splitease.ui.AppApplication
-import com.example.splitease.ui.model.DashboardStatResponse
+import com.example.splitease.ui.model.UserGroupResponse
 import kotlinx.coroutines.launch
 
-class DashboardViewModel(private val repository: Repository): ViewModel() {
+class GroupListViewModel(private val repository: Repository): ViewModel(){
 
-    var dashboardUiState by mutableStateOf<DashboardStatResponse?>(null)
+    var groupListUiState by mutableStateOf(GroupListUiState())
         private set
 
     init {
-        getDashboardStat()
+        getGroupList()
     }
-
-    fun getDashboardStat(){
+    fun getGroupList(){
         viewModelScope.launch {
             try {
-                dashboardUiState = repository.getDashboardStat()
-                println("Dashboard: getDashboardStat success")
-            }catch (e: Exception){
-                println("Dashboard: exception = ${e::class.java} ${e.message}")
+                val groups = repository.getMyGroups()
+                groupListUiState = groupListUiState.copy(groups = groups)
+                println("GROUP LIST called is Successfully")
+            }catch(e: Exception){
+                println("GROUP LIST: exception = ${e::class.java} ${e.message}")
             }
         }
     }
@@ -39,9 +39,12 @@ class DashboardViewModel(private val repository: Repository): ViewModel() {
             initializer {
                 val application = (this[APPLICATION_KEY] as AppApplication)
                 val repository = application.container.repository
-                DashboardViewModel(repository = repository)
+                GroupListViewModel(repository = repository)
             }
         }
     }
 }
 
+data class GroupListUiState(
+    val groups: List<UserGroupResponse> = emptyList()
+)

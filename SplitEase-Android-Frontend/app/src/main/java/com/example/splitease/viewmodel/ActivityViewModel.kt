@@ -1,4 +1,4 @@
-package com.example.splitease.ui.viewmodel
+package com.example.splitease.viewmodel
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -37,7 +37,6 @@ class ActivityViewModel(private val repository: Repository): ViewModel() {
         private set
 
     init {
-        println("DEBUG: ActivityViewModel Created! Fetching data...")
         getActivity()
     }
 

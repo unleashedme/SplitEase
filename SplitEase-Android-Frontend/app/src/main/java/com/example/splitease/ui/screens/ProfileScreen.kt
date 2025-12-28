@@ -47,8 +47,8 @@ import com.example.splitease.R
 import com.example.splitease.ui.SplitEaseBottomBar
 import com.example.splitease.ui.SplitEaseTopAppBar
 import com.example.splitease.ui.navigation.NavigationDestination
-import com.example.splitease.ui.viewmodel.ProfileUiState
-import com.example.splitease.ui.viewmodel.ProfileViewModel
+import com.example.splitease.viewmodel.ProfileUiState
+import com.example.splitease.viewmodel.ProfileViewModel
 import kotlinx.coroutines.launch
 
 
