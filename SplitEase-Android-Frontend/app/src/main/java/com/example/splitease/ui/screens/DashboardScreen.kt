@@ -77,16 +77,16 @@ import com.example.splitease.ui.model.GroupDetailResponse
 import com.example.splitease.ui.model.SettlementSummary
 import com.example.splitease.ui.model.UserGroupResponse
 import com.example.splitease.ui.navigation.NavigationDestination
-import com.example.splitease.ui.viewmodel.ActivityViewModel
-import com.example.splitease.ui.viewmodel.AddExpenseUiState
-import com.example.splitease.ui.viewmodel.AddExpenseViewModel
-import com.example.splitease.ui.viewmodel.CreateGroupUiState
-import com.example.splitease.ui.viewmodel.CreateGroupViewModel
-import com.example.splitease.ui.viewmodel.DashboardViewModel
-import com.example.splitease.ui.viewmodel.GroupListViewModel
-import com.example.splitease.ui.viewmodel.GroupViewModel
-import com.example.splitease.ui.viewmodel.SettlementViewModel
-import com.example.splitease.ui.viewmodel.SortPreference
+import com.example.splitease.viewmodel.ActivityViewModel
+import com.example.splitease.viewmodel.AddExpenseUiState
+import com.example.splitease.viewmodel.AddExpenseViewModel
+import com.example.splitease.viewmodel.CreateGroupUiState
+import com.example.splitease.viewmodel.CreateGroupViewModel
+import com.example.splitease.viewmodel.DashboardViewModel
+import com.example.splitease.viewmodel.GroupListViewModel
+import com.example.splitease.viewmodel.GroupViewModel
+import com.example.splitease.viewmodel.SettlementViewModel
+import com.example.splitease.viewmodel.SortPreference
 import android.Manifest
 import com.example.splitease.data.Repository
 

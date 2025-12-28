@@ -34,8 +34,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.example.splitease.R
 import com.example.splitease.ui.navigation.NavigationDestination
-import com.example.splitease.ui.viewmodel.RegisterViewModel
-import com.example.splitease.ui.viewmodel.UserDetails
+import com.example.splitease.viewmodel.RegisterViewModel
+import com.example.splitease.viewmodel.UserDetails
 
 
 object RegisterDestination: NavigationDestination {

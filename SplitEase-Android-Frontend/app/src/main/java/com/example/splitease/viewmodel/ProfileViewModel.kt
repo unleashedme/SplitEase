@@ -1,4 +1,4 @@
-package com.example.splitease.ui.viewmodel
+package com.example.splitease.viewmodel
 
 import android.util.Log
 import androidx.compose.runtime.getValue

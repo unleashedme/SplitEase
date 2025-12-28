@@ -26,8 +26,8 @@ import com.example.splitease.ui.screens.ProfileDestination
 import com.example.splitease.ui.screens.ProfileScreen
 import com.example.splitease.ui.screens.RegisterDestination
 import com.example.splitease.ui.screens.RegisterScreen
-import com.example.splitease.ui.viewmodel.ActivityViewModel
-import com.example.splitease.ui.viewmodel.GroupViewModel
+import com.example.splitease.viewmodel.ActivityViewModel
+import com.example.splitease.viewmodel.GroupViewModel
 
 @Composable
 fun SplitEaseNavHost(
