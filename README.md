@@ -6,16 +6,19 @@ SplitEase is a full-stack Android application for managing and splitting group e
 <p align="center">
   <img src="screenshots/logInScreen.jpeg" width="220"/>
   <img src="screenshots/registerScreen.jpeg" width="220"/>
-  <img src="screenshots/dashboardScreen.jpeg" width="220" height="490"/>
-  <img src="screenshots/groupScreen.jpeg" width="220"/>
 </p>
 
 <p align="center">
+  <img src="screenshots/dashboardScreen.jpeg" width="220" height="490"/>
+  <img src="screenshots/groupScreen.jpeg" width="220"/>
   <img src="screenshots/activityScreen.jpeg" width="220"/>
-  <img src="screenshots/groupDetailScreen.jpeg" width="220"/>
-  <img src="screenshots/expenseDetailScreen.jpeg" width="220"/>
-  <img src="screenshots/profileScreen.jpeg" width="220"/>
 </p>
+
+<p align="center">
+   <img src="screenshots/groupDetailScreen.jpeg" width="220"/>
+  <img src="screenshots/expenseDetailScreen.jpeg" width="220"/>
+   <img src="screenshots/profileScreen.jpeg" width="220"/>
+</p>   
 
 
 
