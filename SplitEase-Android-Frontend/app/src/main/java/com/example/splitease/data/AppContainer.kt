@@ -16,8 +16,9 @@ interface AppContainer{
 
 class DefaultAppContainer(authStore: AuthStore): AppContainer {
 
-    private val baseUrl = "https://jose-unsacramental-incuriously.ngrok-free.dev"
-        // "http://10.0.2.2:8080/"
+    private val baseUrl = " https://jose-unsacramental-incuriously.ngrok-free.dev/"
+//        "http://10.0.2.2:8080/"
+
     private val moshi = Moshi.Builder()
         .add(KotlinJsonAdapterFactory()) // required for Kotlin data classes to convert JSON to text
         .build()
