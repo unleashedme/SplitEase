@@ -16,7 +16,7 @@ interface AppContainer{
 
 class DefaultAppContainer(authStore: AuthStore): AppContainer {
 
-    private val baseUrl = " https://jose-unsacramental-incuriously.ngrok-free.dev/"
+    private val baseUrl = "splitease-production-ff4f.up.railway.app/"
 //        "http://10.0.2.2:8080/"
 
     private val moshi = Moshi.Builder()
