@@ -38,8 +38,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.example.splitease.R
 import com.example.splitease.ui.navigation.NavigationDestination
-import com.example.splitease.ui.viewmodel.LogInDetails
-import com.example.splitease.ui.viewmodel.LogInViewModel
+import com.example.splitease.viewmodel.LogInDetails
+import com.example.splitease.viewmodel.LogInViewModel
 
 
 object LogInDestination: NavigationDestination {

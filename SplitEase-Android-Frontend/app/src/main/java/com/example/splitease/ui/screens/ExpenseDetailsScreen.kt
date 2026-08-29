@@ -45,7 +45,7 @@ import androidx.compose.ui.unit.sp
 import com.example.splitease.R
 import com.example.splitease.ui.model.ActivityExpenseDto
 import com.example.splitease.ui.navigation.NavigationDestination
-import com.example.splitease.ui.viewmodel.ActivityViewModel
+import com.example.splitease.viewmodel.ActivityViewModel
 
 object ExpenseDetailsDestination : NavigationDestination {
     override val route = "expense_details"
