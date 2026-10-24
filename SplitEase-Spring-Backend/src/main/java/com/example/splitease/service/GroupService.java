@@ -43,11 +43,17 @@ public class GroupService {
         emails.add(creatorEmail);
 
         if(emails.size()>5){
-            throw new RuntimeException("Group can have maximum 10 members");
+            throw new RuntimeException("Group can have maximum 5 members");
         }
 
-        List<Users> users = emails.stream()
-                .map(email -> userRepo.findByEmail(email)).toList();
+        List<Users> users = new ArrayList<>();
+        for (String email : emails) {
+            Users user = userRepo.findByEmail(email);
+            if (user == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User not found: " + email);
+            }
+            users.add(user);
+        }
 
         Groups group = new Groups();
         group.setName(request.getName());

@@ -38,7 +38,7 @@ public class DashboardService {
                 .map(GroupMembers::getGroup)
                 .toList();
 
-        if (groups.isEmpty()) return null;
+        if (groups.isEmpty()) return new DashboardSummaryDTO(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
 
         // 2. Expenses of those groups
         List<Expenses> expenses = expenseRepo.findByGroupIn(groups);

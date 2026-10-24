@@ -28,6 +28,9 @@ public class Groups {
     @OneToMany(mappedBy = "group", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Expenses> expenses;
 
+    @OneToMany(mappedBy = "group", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<GroupMembers> members;
+
     public String getName() {
         return name;
     }

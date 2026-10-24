@@ -7,12 +7,14 @@ import com.example.splitease.requestAndResponse.LogInResponse;
 import com.example.splitease.requestAndResponse.RegisterUserDetails;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 
@@ -34,6 +36,10 @@ public class UserService {
 
 
     public void register(RegisterUserDetails registerUser){
+        if (userRepo.findByEmail(registerUser.getEmail()) != null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already registered");
+        }
+
         Users user = new Users();
 
         user.setPassword(encoder.encode(registerUser.getPassword()));

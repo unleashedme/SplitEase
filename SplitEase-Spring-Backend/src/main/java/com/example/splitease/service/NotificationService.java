@@ -28,6 +28,9 @@ public class NotificationService {
                 System.err.println("FCM token is invalid or unregistered. Removing from database: " + token);
                 userRepo.clearFcmTokenByToken(token);
             }
+        } catch (RuntimeException e) {
+            // e.g. Firebase not initialised; a failed push must never fail the calling request
+            System.err.println("Push notification failed: " + e.getMessage());
         }
     }
 }
