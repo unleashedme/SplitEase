@@ -48,6 +48,8 @@ fun SplitEaseRoot() {
     // Collect the token as state
     val token by authStore.tokenFlow.collectAsState(initial = "loading")
 
+    RequestToastHost()
+
     // Show a blank screen or splash until we know if the user is logged in
     if (token == "loading") {
         // Simple Loading Box

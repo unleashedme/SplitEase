@@ -13,6 +13,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.splitease.data.Repository
 import com.example.splitease.ui.AppApplication
+import com.example.splitease.ui.RequestToasts
 import com.example.splitease.ui.model.GroupScreenDataResponse
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -45,6 +46,7 @@ class GroupViewModel(private val repository: Repository): ViewModel(){
                 println("Group: getGroupScreenData success")
             }catch (e: Exception){
                 println("Group: exception = ${e::class.java} ${e.message}")
+                RequestToasts.failure("Couldn't load groups", e)
             }
         }
     }
@@ -80,11 +82,17 @@ class GroupViewModel(private val repository: Repository): ViewModel(){
     fun deleteGroup(groupId: String, onSuccess:() -> Unit){
         viewModelScope.launch {
             try {
-                repository.deleteGroup(groupId = groupId)
+                val response = repository.deleteGroup(groupId = groupId)
+                if (!response.isSuccessful) {
+                    RequestToasts.failure("Couldn't delete group", response)
+                    return@launch
+                }
                 println("GroupDelete: deletingGroupData success")
+                RequestToasts.success("Group deleted")
                 onSuccess()
             }catch (e: Exception){
                 println("GroupDelete: exception = ${e::class.java} ${e.message}")
+                RequestToasts.failure("Couldn't delete group", e)
             }
         }
     }

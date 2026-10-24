@@ -11,6 +11,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.splitease.data.Repository
 import com.example.splitease.ui.AppApplication
+import com.example.splitease.ui.RequestToasts
 import kotlinx.coroutines.launch
 
 class CreateGroupViewModel(private val repository: Repository): ViewModel() {
@@ -41,14 +42,21 @@ class CreateGroupViewModel(private val repository: Repository): ViewModel() {
         if(createGroupUiState.members.size<=4){
             viewModelScope.launch {
                 try {
-                    repository.createGroup(
-                        groupName = createGroupUiState.name,
+                    val groupName = createGroupUiState.name
+                    val response = repository.createGroup(
+                        groupName = groupName,
                         members = createGroupUiState.members
                     )
+                    if (!response.isSuccessful) {
+                        RequestToasts.failure("Couldn't create group", response)
+                        return@launch
+                    }
+                    RequestToasts.success("Group \"$groupName\" created")
                     onSuccess()
                     println("CREATE GROUP: name = ${createGroupUiState.name}, members = ${createGroupUiState.members}")
                 } catch (e: Exception) {
                     println("CREATE GROUP: exception = ${e::class.java} ${e.message}")
+                    RequestToasts.failure("Couldn't create group", e)
                 }
             }
         }

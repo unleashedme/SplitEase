@@ -11,6 +11,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.splitease.data.Repository
 import com.example.splitease.ui.AppApplication
+import com.example.splitease.ui.RequestToasts
 import com.example.splitease.ui.model.UserGroupResponse
 import kotlinx.coroutines.launch
 
@@ -30,6 +31,7 @@ class GroupListViewModel(private val repository: Repository): ViewModel(){
                 println("GROUP LIST called is Successfully")
             }catch(e: Exception){
                 println("GROUP LIST: exception = ${e::class.java} ${e.message}")
+                RequestToasts.failure("Couldn't load groups", e)
             }
         }
     }

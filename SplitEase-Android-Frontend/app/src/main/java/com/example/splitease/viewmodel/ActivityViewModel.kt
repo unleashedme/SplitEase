@@ -12,6 +12,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.splitease.data.Repository
 import com.example.splitease.ui.AppApplication
+import com.example.splitease.ui.RequestToasts
 import com.example.splitease.ui.model.ActivitySummaryDto
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -47,6 +48,7 @@ class ActivityViewModel(private val repository: Repository): ViewModel() {
                 println("Activity: getActivity success")
             }catch (e: Exception){
                 println("Activity: exception = ${e::class.java} ${e.message}")
+                RequestToasts.failure("Couldn't load activity", e)
             }
         }
     }
@@ -85,11 +87,17 @@ class ActivityViewModel(private val repository: Repository): ViewModel() {
     fun deleteExpense(expenseId: String, onSuccess:() -> Unit){
         viewModelScope.launch{
             try{
-                repository.deleteExpense(expenseId)
+                val response = repository.deleteExpense(expenseId)
+                if (!response.isSuccessful) {
+                    RequestToasts.failure("Couldn't delete expense", response)
+                    return@launch
+                }
                 println("Expense Delete: success")
+                RequestToasts.success("Expense deleted")
                 onSuccess()
             }catch(e: Exception){
                 println("Expense Delete: exception = ${e::class.java} ${e.message}")
+                RequestToasts.failure("Couldn't delete expense", e)
             }
         }
     }

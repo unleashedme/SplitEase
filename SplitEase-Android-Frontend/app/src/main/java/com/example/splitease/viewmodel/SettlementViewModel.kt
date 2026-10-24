@@ -12,6 +12,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.splitease.data.Repository
 import com.example.splitease.dto.SettlementDto
 import com.example.splitease.ui.AppApplication
+import com.example.splitease.ui.RequestToasts
 import com.example.splitease.ui.model.SettlementSummary
 import kotlinx.coroutines.launch
 
@@ -31,6 +32,7 @@ class SettlementViewModel(private val repository: Repository): ViewModel(){
             }
             catch(e : Exception){
                 println("SettlementList: exception = ${e::class.java} ${e.message}")
+                RequestToasts.failure("Couldn't load what you owe", e)
             }
         }
     }
@@ -45,10 +47,12 @@ class SettlementViewModel(private val repository: Repository): ViewModel(){
                         note = note,
                     )
                 )
+                RequestToasts.success("Payment of ₹%.2f recorded".format(amount))
                 onSuccess()
                 println("Settlement: recordPayment success")
             }catch (e: Exception){
                 println("Settlement: exception = ${e::class.java} ${e.message}")
+                RequestToasts.failure("Couldn't record payment", e)
             }
         }
     }

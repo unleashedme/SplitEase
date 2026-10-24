@@ -12,9 +12,9 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.splitease.data.Repository
 import com.example.splitease.dto.SplitEntryDto
 import com.example.splitease.ui.AppApplication
+import com.example.splitease.ui.RequestToasts
 import com.example.splitease.ui.model.GroupMemberDto
 import kotlinx.coroutines.launch
-import org.json.JSONObject
 import kotlin.math.abs
 
 class AddExpenseViewModel(private val repository : Repository) : ViewModel() {
@@ -88,17 +88,15 @@ class AddExpenseViewModel(private val repository : Repository) : ViewModel() {
                     splits = state.splitEntries()
                 )
                 if (!response.isSuccessful) {
-                    val message = response.errorBody()?.string()
-                        ?.let { runCatching { JSONObject(it).optString("message") }.getOrNull() }
-                        ?.takeIf { it.isNotBlank() }
-                    addExpenseUiState = addExpenseUiState.copy(errorMessage = message ?: "Couldn't add expense, please try again")
+                    RequestToasts.failure("Couldn't add expense", response)
                     return@launch
                 }
                 println("Add Expense called is Successfully")
+                RequestToasts.success("Expense \"${state.description}\" added")
                 onSuccess()
             }catch (e: Exception){
                 println("ADD EXPENSE: exception = ${e::class.java} ${e.message}")
-                addExpenseUiState = addExpenseUiState.copy(errorMessage = "Couldn't add expense, please check your connection")
+                RequestToasts.failure("Couldn't add expense", e)
             }
         }
     }

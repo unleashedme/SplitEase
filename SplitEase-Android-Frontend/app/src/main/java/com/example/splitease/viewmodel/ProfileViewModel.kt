@@ -13,6 +13,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.splitease.data.Repository
 import com.example.splitease.datastore.AuthStore
 import com.example.splitease.ui.AppApplication
+import com.example.splitease.ui.RequestToasts
 import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -63,11 +64,11 @@ class ProfileViewModel(private val authStore: AuthStore,
                     if (task.isSuccessful) {
                         val token = task.result
                         viewModelScope.launch {
-                            repository.updateFcmToken(token)
+                            syncFcmToken(token, isEnabled)
                         }
                     } else {
                         viewModelScope.launch{
-                            repository.updateFcmToken("")
+                            syncFcmToken("", isEnabled)
                         }
 
                         FirebaseMessaging.getInstance().deleteToken()
@@ -76,7 +77,21 @@ class ProfileViewModel(private val authStore: AuthStore,
                 }
             } catch (e: Exception) {
                 Log.e("ProfileVM", "Failed to sync preference: ${e.message}")
+                RequestToasts.failure("Couldn't update notification settings", e)
             }
+        }
+    }
+
+    private suspend fun syncFcmToken(token: String, isEnabled: Boolean) {
+        try {
+            val response = repository.updateFcmToken(token)
+            if (response.isSuccessful) {
+                RequestToasts.success(if (isEnabled) "Notifications turned on" else "Notifications turned off")
+            } else {
+                RequestToasts.failure("Couldn't update notification settings", response)
+            }
+        } catch (e: Exception) {
+            RequestToasts.failure("Couldn't update notification settings", e)
         }
     }
 

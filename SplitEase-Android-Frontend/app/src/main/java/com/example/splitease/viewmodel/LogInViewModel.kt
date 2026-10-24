@@ -12,10 +12,12 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.splitease.data.Repository
 import com.example.splitease.datastore.AuthStore
 import com.example.splitease.ui.AppApplication
+import com.example.splitease.ui.RequestToasts
 import com.example.splitease.ui.model.LogInResponse
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
+import retrofit2.HttpException
 
 
 sealed class LoginState {
@@ -65,11 +67,17 @@ class LogInViewModel(private val repository: Repository, private val authStore: 
                         result.email,
                         result.phone
                     )
+                    RequestToasts.success("Welcome back, ${result.name}!")
                     _navigateToDashboard.emit(Unit)
                     loginState = LoginState.Success(result)
 
                 }catch (e: Exception){
                     println("LOGIN: exception = ${e::class.java} ${e.message}")
+                    if (e is HttpException && (e.code() == 401 || e.code() == 403)) {
+                        RequestToasts.failure("Login failed: wrong email or password")
+                    } else {
+                        RequestToasts.failure("Login failed", e)
+                    }
                     loginState = LoginState.Error(e.message ?: "error")
                 }
             }
