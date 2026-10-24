@@ -38,6 +38,8 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             sendNotification(title, body)
         }
 
+        // Someone else changed shared data (new expense, settlement, group), so the cached screens are stale
+        (application as AppApplication).container.dataStore.refreshIfLoaded()
     }
 
     //Called when Google refreshes the device token.

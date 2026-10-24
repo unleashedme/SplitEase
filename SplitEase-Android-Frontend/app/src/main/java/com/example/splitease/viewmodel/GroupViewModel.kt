@@ -11,8 +11,10 @@ import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.AP
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.example.splitease.data.AppDataStore
 import com.example.splitease.data.Repository
 import com.example.splitease.ui.AppApplication
+import com.example.splitease.ui.RequestToasts
 import com.example.splitease.ui.model.GroupScreenDataResponse
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -29,25 +31,24 @@ enum class GroupSortOrder(val displayName: String) {
     HIGHEST_EXPENSES("Highest Expenses")
 }
 
-class GroupViewModel(private val repository: Repository): ViewModel(){
+class GroupViewModel(
+    private val repository: Repository,
+    private val dataStore: AppDataStore
+): ViewModel(){
 
-    var groupUiState by mutableStateOf<GroupScreenDataResponse?>(null)
-        private set
+    // Cached app-wide; see AppDataStore
+    val groupUiState: GroupScreenDataResponse?
+        get() = dataStore.groupScreenData
+
+    val isRefreshing: Boolean
+        get() = dataStore.isRefreshing
 
     init {
-        getGroupScreenData()
+        dataStore.loadIfNeeded()
     }
 
-    fun getGroupScreenData(){
-        viewModelScope.launch {
-            try{
-                groupUiState = repository.getGroupScreenData()
-                println("Group: getGroupScreenData success")
-            }catch (e: Exception){
-                println("Group: exception = ${e::class.java} ${e.message}")
-            }
-        }
-    }
+    // Pull to refresh
+    fun refresh() = dataStore.refresh()
 
     private val _groupSortOrder = MutableStateFlow(GroupSortOrder.MOST_RECENT)
     val groupSortOrder = _groupSortOrder.asStateFlow()
@@ -80,11 +81,18 @@ class GroupViewModel(private val repository: Repository): ViewModel(){
     fun deleteGroup(groupId: String, onSuccess:() -> Unit){
         viewModelScope.launch {
             try {
-                repository.deleteGroup(groupId = groupId)
+                val response = repository.deleteGroup(groupId = groupId)
+                if (!response.isSuccessful) {
+                    RequestToasts.failure("Couldn't delete group", response)
+                    return@launch
+                }
                 println("GroupDelete: deletingGroupData success")
+                RequestToasts.success("Group deleted")
+                dataStore.refresh()
                 onSuccess()
             }catch (e: Exception){
                 println("GroupDelete: exception = ${e::class.java} ${e.message}")
+                RequestToasts.failure("Couldn't delete group", e)
             }
         }
     }
@@ -94,7 +102,7 @@ class GroupViewModel(private val repository: Repository): ViewModel(){
             initializer {
                 val application = (this[APPLICATION_KEY] as AppApplication)
                 val repository = application.container.repository
-                GroupViewModel(repository = repository)
+                GroupViewModel(repository = repository, dataStore = application.container.dataStore)
             }
         }
     }

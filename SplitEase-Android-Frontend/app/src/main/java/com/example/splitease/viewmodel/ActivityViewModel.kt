@@ -10,8 +10,10 @@ import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.AP
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.example.splitease.data.AppDataStore
 import com.example.splitease.data.Repository
 import com.example.splitease.ui.AppApplication
+import com.example.splitease.ui.RequestToasts
 import com.example.splitease.ui.model.ActivitySummaryDto
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -30,26 +32,24 @@ enum class SortPreference(val displayName: String) {
     LOWEST("Lowest Amount")
 }
 
-class ActivityViewModel(private val repository: Repository): ViewModel() {
+class ActivityViewModel(
+    private val repository: Repository,
+    private val dataStore: AppDataStore
+): ViewModel() {
 
+    // Cached app-wide; see AppDataStore
+    val activityUiState: ActivitySummaryDto?
+        get() = dataStore.activity
 
-    var activityUiState by mutableStateOf<ActivitySummaryDto?>(null)
-        private set
+    val isRefreshing: Boolean
+        get() = dataStore.isRefreshing
 
     init {
-        getActivity()
+        dataStore.loadIfNeeded()
     }
 
-    fun getActivity(){
-        viewModelScope.launch {
-            try{
-                activityUiState = repository.getActivity()
-                println("Activity: getActivity success")
-            }catch (e: Exception){
-                println("Activity: exception = ${e::class.java} ${e.message}")
-            }
-        }
-    }
+    // Pull to refresh
+    fun refresh() = dataStore.refresh()
 
     private val _sortPreference = MutableStateFlow(SortPreference.NEWEST)
     val sortPreference = _sortPreference.asStateFlow()
@@ -85,11 +85,18 @@ class ActivityViewModel(private val repository: Repository): ViewModel() {
     fun deleteExpense(expenseId: String, onSuccess:() -> Unit){
         viewModelScope.launch{
             try{
-                repository.deleteExpense(expenseId)
+                val response = repository.deleteExpense(expenseId)
+                if (!response.isSuccessful) {
+                    RequestToasts.failure("Couldn't delete expense", response)
+                    return@launch
+                }
                 println("Expense Delete: success")
+                RequestToasts.success("Expense deleted")
+                dataStore.refresh()
                 onSuccess()
             }catch(e: Exception){
                 println("Expense Delete: exception = ${e::class.java} ${e.message}")
+                RequestToasts.failure("Couldn't delete expense", e)
             }
         }
     }
@@ -99,7 +106,7 @@ class ActivityViewModel(private val repository: Repository): ViewModel() {
             initializer {
                 val application = (this[APPLICATION_KEY] as AppApplication)
                 val repository = application.container.repository
-                ActivityViewModel(repository = repository)
+                ActivityViewModel(repository = repository, dataStore = application.container.dataStore)
             }
         }
     }

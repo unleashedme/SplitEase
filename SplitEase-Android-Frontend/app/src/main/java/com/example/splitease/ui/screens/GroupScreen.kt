@@ -17,6 +17,8 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.HorizontalDivider
@@ -77,9 +79,6 @@ fun GroupScreen(
 ){
     var showCreateGroupPopUp by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        groupViewModel.getGroupScreenData()
-    }
 
     val groupUiData = groupViewModel.groupUiState
 
@@ -96,145 +95,152 @@ fun GroupScreen(
         },
         containerColor = MaterialTheme.colorScheme.background
     ){ innerPadding ->
-        LazyColumn(
-            modifier = modifier
+        PullToRefreshBox(
+            isRefreshing = groupViewModel.isRefreshing,
+            onRefresh = groupViewModel::refresh,
+            modifier = Modifier
                 .padding(innerPadding)
-                .fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+                .fillMaxSize()
         ) {
-            item {
-                Text(
-                    text = "Groups",
-                    fontSize = 28.sp,
-                    textAlign = TextAlign.Start,
-                    modifier = Modifier
-                        .padding(dimensionResource(R.dimen.smallPadding))
-                        .fillMaxWidth()
-                )
-            }
-            item {
-                Text(
-                    text = "Manage your expense sharing groups and members",
-                    fontSize = 16.sp,
-                    color = Color.Gray,
-                    textAlign = TextAlign.Start,
-                    modifier = Modifier
-                        .padding(dimensionResource(R.dimen.smallPadding))
-                        .fillMaxWidth()
-                )
-            }
-            item{
-                GroupStatsList(
-                    groupUiData = groupUiData,
-                    modifier = Modifier
-                        .padding(dimensionResource(R.dimen.smallPadding))
-                )
-            }
-            item{
-                Row(
-                    horizontalArrangement = Arrangement
-                        .spacedBy(dimensionResource(R.dimen.smallPadding)),
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = dimensionResource(R.dimen.smallPadding))
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.sorting_arrows_96),
-                        contentDescription = "sorting Icon",
-                        tint = Color.Gray,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Card(
-                        modifier = Modifier
-                            .padding(4.dp)
-                            .fillMaxWidth(0.5f)
-                    ){
-                        ExposedDropdownMenuBox(
-                            expanded = preferenceListExpanded,
-                            onExpandedChange = { preferenceListExpanded = !preferenceListExpanded }
-                        ) {
-                            Row(
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(dimensionResource(R.dimen.mediumPadding))
-                                    .size(20.dp)
-                                    .menuAnchor(
-                                        type = MenuAnchorType.PrimaryNotEditable,
-                                        enabled = true
-                                    )
-                            ) {
-                                Text(
-                                    text = selectedPreference.displayName,
-                                    color = Color.Black
-                                )
-                                Icon(
-                                    painter = painterResource(R.drawable.expand_arrow_96),
-                                    contentDescription = "Expand Icon",
-                                    tint = Color.Gray
-                                )
-                            }
-                            ExposedDropdownMenu(
-                                expanded = preferenceListExpanded,
-                                onDismissRequest = { preferenceListExpanded = false },
-                                shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),
-                                containerColor = Color.White
-                            ) {
-                                GroupSortOrder.entries.forEach { preference ->
-                                    DropdownMenuItem(
-                                        text = {
-                                            Text(
-                                                text = preference.displayName,
-                                                fontSize = 16.sp
-                                            )
-                                        },
-                                        onClick = {
-                                            groupViewModel.updateSortOrder(preference.displayName)
-                                            preferenceListExpanded = false
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    FilledIconButton(
-                        onClick = { showCreateGroupPopUp = true },
+            LazyColumn(
+                modifier = modifier
+                    .fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                item {
+                    Text(
+                        text = "Groups",
+                        fontSize = 28.sp,
+                        textAlign = TextAlign.Start,
                         modifier = Modifier
                             .padding(dimensionResource(R.dimen.smallPadding))
                             .fillMaxWidth()
-                            .height(36.dp),
-                        shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),
-                        colors = IconButtonDefaults.filledIconButtonColors(Color.Black)
+                    )
+                }
+                item {
+                    Text(
+                        text = "Manage your expense sharing groups and members",
+                        fontSize = 16.sp,
+                        color = Color.Gray,
+                        textAlign = TextAlign.Start,
+                        modifier = Modifier
+                            .padding(dimensionResource(R.dimen.smallPadding))
+                            .fillMaxWidth()
+                    )
+                }
+                item{
+                    GroupStatsList(
+                        groupUiData = groupUiData,
+                        modifier = Modifier
+                            .padding(dimensionResource(R.dimen.smallPadding))
+                    )
+                }
+                item{
+                    Row(
+                        horizontalArrangement = Arrangement
+                            .spacedBy(dimensionResource(R.dimen.smallPadding)),
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = dimensionResource(R.dimen.smallPadding))
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
+                        Icon(
+                            painter = painterResource(R.drawable.sorting_arrows_96),
+                            contentDescription = "sorting Icon",
+                            tint = Color.Gray,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Card(
+                            modifier = Modifier
+                                .padding(4.dp)
+                                .fillMaxWidth(0.5f)
+                        ){
+                            ExposedDropdownMenuBox(
+                                expanded = preferenceListExpanded,
+                                onExpandedChange = { preferenceListExpanded = !preferenceListExpanded }
+                            ) {
+                                Row(
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(dimensionResource(R.dimen.mediumPadding))
+                                        .size(20.dp)
+                                        .menuAnchor(
+                                            type = MenuAnchorType.PrimaryNotEditable,
+                                            enabled = true
+                                        )
+                                ) {
+                                    Text(
+                                        text = selectedPreference.displayName,
+                                        color = Color.Black
+                                    )
+                                    Icon(
+                                        painter = painterResource(R.drawable.expand_arrow_96),
+                                        contentDescription = "Expand Icon",
+                                        tint = Color.Gray
+                                    )
+                                }
+                                ExposedDropdownMenu(
+                                    expanded = preferenceListExpanded,
+                                    onDismissRequest = { preferenceListExpanded = false },
+                                    shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),
+                                    containerColor = Color.White
+                                ) {
+                                    GroupSortOrder.entries.forEach { preference ->
+                                        DropdownMenuItem(
+                                            text = {
+                                                Text(
+                                                    text = preference.displayName,
+                                                    fontSize = 16.sp
+                                                )
+                                            },
+                                            onClick = {
+                                                groupViewModel.updateSortOrder(preference.displayName)
+                                                preferenceListExpanded = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        FilledIconButton(
+                            onClick = { showCreateGroupPopUp = true },
+                            modifier = Modifier
+                                .padding(dimensionResource(R.dimen.smallPadding))
+                                .fillMaxWidth()
+                                .height(36.dp),
+                            shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),
+                            colors = IconButtonDefaults.filledIconButtonColors(Color.Black)
                         ) {
-                            Icon(
-                                painter = painterResource(R.drawable.add_group_96),
-                                contentDescription = "group Icon",
-                                tint = Color.White,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Text(
-                                text = " Create Group",
-                                color = Color.White
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.add_group_96),
+                                    contentDescription = "group Icon",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Text(
+                                    text = " Create Group",
+                                    color = Color.White
+                                )
+                            }
                         }
                     }
                 }
-            }
-            item{
-                GroupList(
-                    groups = sortedGroupList,
-                    onGroupViewDetailClick = onGroupViewDetailClick,
-                    modifier = Modifier
-                        .padding(dimensionResource(R.dimen.smallPadding))
-                )
-            }
+                item{
+                    GroupList(
+                        groups = sortedGroupList,
+                        onGroupViewDetailClick = onGroupViewDetailClick,
+                        modifier = Modifier
+                            .padding(dimensionResource(R.dimen.smallPadding))
+                    )
+                }
 
+            }
         }
     }
     if(showCreateGroupPopUp){
@@ -252,10 +258,6 @@ fun GroupScreen(
                 onCreateGroupClick = {
                     createGroupViewModel.createGroup {
                         showCreateGroupPopUp = false
-                        groupViewModel.getGroupScreenData()
-                        activityViewModel.getActivity()
-                        dashboardViewModel.getDashboardStat()
-                        groupListViewModel.getGroupList()
                         createGroupViewModel.resetUiState()
                     }
                 }

@@ -23,6 +23,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -30,11 +32,16 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
@@ -71,6 +78,7 @@ import com.example.splitease.FCMHandler
 import com.example.splitease.R
 import com.example.splitease.ui.SplitEaseBottomBar
 import com.example.splitease.ui.SplitEaseTopAppBar
+import com.example.splitease.ui.navigateToTab
 import com.example.splitease.ui.model.ActivityExpenseDto
 import com.example.splitease.ui.model.DashboardStatResponse
 import com.example.splitease.ui.model.GroupDetailResponse
@@ -87,6 +95,10 @@ import com.example.splitease.viewmodel.GroupListViewModel
 import com.example.splitease.viewmodel.GroupViewModel
 import com.example.splitease.viewmodel.SettlementViewModel
 import com.example.splitease.viewmodel.SortPreference
+import com.example.splitease.viewmodel.SplitMode
+import com.example.splitease.viewmodel.previewShare
+import com.example.splitease.viewmodel.splitError
+import com.example.splitease.viewmodel.splitTotal
 import android.Manifest
 import com.example.splitease.data.Repository
 
@@ -128,134 +140,141 @@ fun DashboardScreen(
         },
         containerColor = MaterialTheme.colorScheme.background
     ){ innerPadding->
-        LazyColumn(
-            modifier = modifier
+        PullToRefreshBox(
+            isRefreshing = dashboardViewModel.isRefreshing,
+            onRefresh = dashboardViewModel::refresh,
+            modifier = Modifier
                 .padding(innerPadding)
-                .fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement
-                .spacedBy(dimensionResource(R.dimen.smallPadding))
+                .fillMaxSize()
         ) {
-            item {
-                Text(
-                    text = "Welcome to Splitease",
-                    fontSize = 28.sp,
-                    textAlign = TextAlign.Start,
-                    modifier = Modifier
-                        .padding(dimensionResource(R.dimen.smallPadding))
-                        .fillMaxWidth(),
+            LazyColumn(
+                modifier = modifier
+                    .fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement
+                    .spacedBy(dimensionResource(R.dimen.smallPadding))
+            ) {
+                item {
+                    Text(
+                        text = "Welcome to Splitease",
+                        fontSize = 28.sp,
+                        textAlign = TextAlign.Start,
+                        modifier = Modifier
+                            .padding(dimensionResource(R.dimen.smallPadding))
+                            .fillMaxWidth(),
 
+                        )
+                }
+                item {
+                    Text(
+                        text = "Track and split expenses effortlessly with your friends and family",
+                        fontSize = 16.sp,
+                        color = Color.Gray,
+                        textAlign = TextAlign.Start,
+                        modifier = Modifier
+                            .padding(dimensionResource(R.dimen.smallPadding))
+                            .fillMaxWidth()
                     )
-            }
-            item {
-                Text(
-                    text = "Track and split expenses effortlessly with your friends and family",
-                    fontSize = 16.sp,
-                    color = Color.Gray,
-                    textAlign = TextAlign.Start,
-                    modifier = Modifier
-                        .padding(dimensionResource(R.dimen.smallPadding))
-                        .fillMaxWidth()
-                )
-            }
-            item {
-                DashboardStatsList(
-                    dashboardStats = dashboardViewModel.dashboardUiState,
-                    activeGroupsCount = groupViewModel.groupUiState?.activeGroupsCount?:0,
-                    modifier = Modifier
-                        .padding(dimensionResource(R.dimen.smallPadding))
-                )
-            }
-            item{
-                ElevatedButton(
-                    onClick = { showCreateGroupPopUp = true },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(dimensionResource(R.dimen.smallPadding)),
-                    shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),
-                    colors = ButtonDefaults.elevatedButtonColors(Color.Black)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
+                }
+                item {
+                    DashboardStatsList(
+                        dashboardStats = dashboardViewModel.dashboardUiState,
+                        activeGroupsCount = groupViewModel.groupUiState?.activeGroupsCount?:0,
+                        modifier = Modifier
+                            .padding(dimensionResource(R.dimen.smallPadding))
+                    )
+                }
+                item{
+                    ElevatedButton(
+                        onClick = { showCreateGroupPopUp = true },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(dimensionResource(R.dimen.smallPadding)),
+                        shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),
+                        colors = ButtonDefaults.elevatedButtonColors(Color.Black)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.add_group_96),
+                                contentDescription = "group Icon",
+                                tint = Color.White,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Text(
+                                text = " Create Group",
+                                color = Color.White,
+                                fontSize = 16.sp,
+                                modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding))
+                            )
+                        }
+                    }
+                }
+                item{
+                    ElevatedButton(
+                        onClick = { showAddExpensePopUp = true },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(dimensionResource(R.dimen.smallPadding)),
+                        shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),
+                        colors = ButtonDefaults.elevatedButtonColors(Color.White),
+                        border = BorderStroke(0.05.dp, Color.Gray)
                     ) {
                         Icon(
-                            painter = painterResource(R.drawable.add_group_96),
-                            contentDescription = "group Icon",
-                            tint = Color.White,
+                            painter = painterResource(R.drawable.add_96),
+                            contentDescription = "add Expense Icon",
+                            tint = Color.Black,
                             modifier = Modifier.size(24.dp)
                         )
                         Text(
-                            text = " Create Group",
-                            color = Color.White,
+                            text = " Add Expense",
+                            color = Color.Black,
                             fontSize = 16.sp,
                             modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding))
                         )
                     }
                 }
-            }
-            item{
-                ElevatedButton(
-                    onClick = { showAddExpensePopUp = true },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(dimensionResource(R.dimen.smallPadding)),
-                    shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),
-                    colors = ButtonDefaults.elevatedButtonColors(Color.White),
-                    border = BorderStroke(0.05.dp, Color.Gray)
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.add_96),
-                        contentDescription = "add Expense Icon",
-                        tint = Color.Black,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Text(
-                        text = " Add Expense",
-                        color = Color.Black,
-                        fontSize = 16.sp,
-                        modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding))
+                item{
+                    ElevatedButton(
+                        onClick = { showSettleUpPopUp = true },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(dimensionResource(R.dimen.smallPadding)),
+                        shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),
+                        colors = ButtonDefaults.elevatedButtonColors(Color.White),
+                        border = BorderStroke(0.05.dp, Color.Gray)
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.coin_in_hand_96),
+                            contentDescription = "payment Icon",
+                            tint = Color.Black,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Text(
+                            text = " Settle Up",
+                            color = Color.Black,
+                            fontSize = 16.sp,
+                            modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding))
+                        )
+                    }
+                }
+                item{
+                    RecentExpenses(
+                        activityViewModel = activityViewModel,
+                        viewAllExpenses = {navController.navigateToTab(ActivityDestination.route)},
+                        modifier = Modifier
+                            .padding(dimensionResource(R.dimen.smallPadding))
                     )
                 }
-            }
-            item{
-                ElevatedButton(
-                    onClick = { showSettleUpPopUp = true },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(dimensionResource(R.dimen.smallPadding)),
-                    shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),
-                    colors = ButtonDefaults.elevatedButtonColors(Color.White),
-                    border = BorderStroke(0.05.dp, Color.Gray)
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.coin_in_hand_96),
-                        contentDescription = "payment Icon",
-                        tint = Color.Black,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Text(
-                        text = " Settle Up",
-                        color = Color.Black,
-                        fontSize = 16.sp,
-                        modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding))
+                item{
+                    ActiveGroups(
+                        activeGroupList = activeGroups,
+                        viewAllGroups = {navController.navigateToTab(GroupDestination.route)},
+                        modifier = Modifier
+                            .padding(dimensionResource(R.dimen.smallPadding))
                     )
                 }
-            }
-            item{
-                RecentExpenses(
-                    activityViewModel = activityViewModel,
-                    viewAllExpenses = {navController.navigate(ActivityDestination.route)},
-                    modifier = Modifier
-                        .padding(dimensionResource(R.dimen.smallPadding))
-                )
-            }
-            item{
-                ActiveGroups(
-                    activeGroupList = activeGroups,
-                    viewAllGroups = {navController.navigate(GroupDestination.route)},
-                    modifier = Modifier
-                        .padding(dimensionResource(R.dimen.smallPadding))
-                )
             }
         }
     }
@@ -276,9 +295,6 @@ fun DashboardScreen(
                 onCreateGroupClick = {
                     createGroupViewModel.createGroup {
                         showCreateGroupPopUp = false
-                        groupListViewModel.getGroupList()
-                        groupViewModel.getGroupScreenData()
-                        dashboardViewModel.getDashboardStat()
                         createGroupViewModel.resetUiState()
                     }
                 }
@@ -1078,6 +1094,8 @@ fun AddExpensePopUp(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                // The split editor can make the dialog taller than the screen
+                .verticalScroll(rememberScrollState())
                 .padding(dimensionResource(R.dimen.largePadding)),
             verticalArrangement = Arrangement
                 .spacedBy(dimensionResource(R.dimen.smallPadding)),
@@ -1219,21 +1237,34 @@ fun AddExpensePopUp(
                             },
                             onClick = {
                                 selectedGroup = group
+                                addExpenseViewModel.setGroupMembers(group.members)
                                 expanded = false
                             }
                         )
                     }
                 }
             }
+            if (selectedGroup != null && addExpenseUiState.members.isNotEmpty()) {
+                Spacer(modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding)))
+                SplitEditor(
+                    addExpenseUiState = addExpenseUiState,
+                    addExpenseViewModel = addExpenseViewModel
+                )
+            }
+            addExpenseUiState.errorMessage?.let { error ->
+                Text(
+                    text = error,
+                    color = Color.Red,
+                    fontSize = 14.sp,
+                    textAlign = TextAlign.Start,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
             Spacer(modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding)))
             FilledIconButton(
                 onClick = {
                     addExpenseViewModel.addExpense(selectedGroup?.groupId?:""){
                         onClose()
-                        groupViewModel.getGroupScreenData()
-                        dashboardViewModel.getDashboardStat()
-                        settlementViewModel.loadSettlements()
-                        activityViewModel.getActivity()
                         addExpenseViewModel.resetUiState()
                     }
                 },
@@ -1265,6 +1296,109 @@ fun AddExpensePopUp(
                     color = Color.Black
                 )
             }
+        }
+    }
+}
+
+@Composable
+fun SplitEditor(
+    addExpenseUiState: AddExpenseUiState,
+    addExpenseViewModel: AddExpenseViewModel,
+    modifier: Modifier = Modifier
+){
+    val splitMode = addExpenseUiState.splitMode
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.smallPadding))
+    ) {
+        Text(
+            text = "Split",
+            fontSize = 16.sp,
+            textAlign = TextAlign.Start,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            SplitMode.entries.forEach { mode ->
+                FilterChip(
+                    selected = mode == splitMode,
+                    onClick = { addExpenseViewModel.setSplitMode(mode) },
+                    label = { Text(text = mode.label, fontSize = 12.sp) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = Color.Black,
+                        selectedLabelColor = Color.White
+                    )
+                )
+            }
+        }
+        Text(
+            text = when (splitMode) {
+                SplitMode.EQUAL -> "Tick who shares this expense."
+                SplitMode.EXACT -> "Enter how much each person owes."
+                SplitMode.PERCENTAGE -> "Enter each person's percentage."
+                SplitMode.SHARES -> "Enter shares, e.g. 2 pays twice as much as 1."
+            },
+            color = Color.Gray,
+            fontSize = 14.sp,
+            textAlign = TextAlign.Start,
+            modifier = Modifier.fillMaxWidth()
+        )
+        addExpenseUiState.members.forEach { member ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (splitMode == SplitMode.EQUAL) {
+                    Checkbox(
+                        checked = member.userId in addExpenseUiState.includedMemberIds,
+                        onCheckedChange = { addExpenseViewModel.toggleMember(member.userId) }
+                    )
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(text = member.name, fontSize = 16.sp)
+                    Text(
+                        text = "₹%.2f".format(addExpenseUiState.previewShare(member.userId)),
+                        color = Color.Gray,
+                        fontSize = 13.sp
+                    )
+                }
+                if (splitMode != SplitMode.EQUAL) {
+                    OutlinedTextField(
+                        value = addExpenseUiState.splitValues[member.userId] ?: "",
+                        onValueChange = { addExpenseViewModel.updateSplitValue(member.userId, it) },
+                        shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),
+                        placeholder = { Text("0") },
+                        prefix = if (splitMode == SplitMode.EXACT) { { Text("₹") } } else null,
+                        suffix = if (splitMode == SplitMode.PERCENTAGE) { { Text("%") } } else null,
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Decimal
+                        ),
+                        modifier = Modifier.width(110.dp)
+                    )
+                }
+            }
+        }
+        // Running total so the user can see what's left to assign
+        val total = addExpenseUiState.splitTotal()
+        val summary = when (splitMode) {
+            SplitMode.EXACT -> {
+                val remaining = (addExpenseUiState.amount.toDoubleOrNull() ?: 0.0) - total
+                "₹%.2f assigned · ₹%.2f left".format(total, remaining)
+            }
+            SplitMode.PERCENTAGE -> "%.2f%% assigned · %.2f%% left".format(total, 100 - total)
+            else -> null
+        }
+        summary?.let {
+            Text(
+                text = it,
+                color = if (addExpenseUiState.splitError() == null) Color.Gray else Color(0xFFB00020),
+                fontSize = 14.sp,
+                textAlign = TextAlign.End,
+                modifier = Modifier.fillMaxWidth()
+            )
         }
     }
 }
@@ -1479,10 +1613,6 @@ fun SettleUpPopUp(
                         note = note
                     ) {
                         onClose()
-                        groupViewModel.getGroupScreenData()
-                        dashboardViewModel.getDashboardStat()
-                        settlementViewModel.loadSettlements()
-                        activityViewModel.getActivity()
                     }
                 },
                 shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),

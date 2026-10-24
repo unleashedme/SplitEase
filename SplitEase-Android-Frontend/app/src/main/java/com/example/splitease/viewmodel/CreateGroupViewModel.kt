@@ -9,11 +9,16 @@ import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.AP
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.example.splitease.data.AppDataStore
 import com.example.splitease.data.Repository
 import com.example.splitease.ui.AppApplication
+import com.example.splitease.ui.RequestToasts
 import kotlinx.coroutines.launch
 
-class CreateGroupViewModel(private val repository: Repository): ViewModel() {
+class CreateGroupViewModel(
+    private val repository: Repository,
+    private val dataStore: AppDataStore
+): ViewModel() {
 
     var createGroupUiState by mutableStateOf(CreateGroupUiState())
         private set
@@ -41,14 +46,22 @@ class CreateGroupViewModel(private val repository: Repository): ViewModel() {
         if(createGroupUiState.members.size<=4){
             viewModelScope.launch {
                 try {
-                    repository.createGroup(
-                        groupName = createGroupUiState.name,
+                    val groupName = createGroupUiState.name
+                    val response = repository.createGroup(
+                        groupName = groupName,
                         members = createGroupUiState.members
                     )
+                    if (!response.isSuccessful) {
+                        RequestToasts.failure("Couldn't create group", response)
+                        return@launch
+                    }
+                    RequestToasts.success("Group \"$groupName\" created")
+                    dataStore.refresh()
                     onSuccess()
                     println("CREATE GROUP: name = ${createGroupUiState.name}, members = ${createGroupUiState.members}")
                 } catch (e: Exception) {
                     println("CREATE GROUP: exception = ${e::class.java} ${e.message}")
+                    RequestToasts.failure("Couldn't create group", e)
                 }
             }
         }
@@ -60,7 +73,7 @@ class CreateGroupViewModel(private val repository: Repository): ViewModel() {
             initializer {
                 val application = (this[APPLICATION_KEY] as AppApplication)
                 val repository = application.container.repository
-                CreateGroupViewModel(repository = repository)
+                CreateGroupViewModel(repository = repository, dataStore = application.container.dataStore)
             }
         }
     }

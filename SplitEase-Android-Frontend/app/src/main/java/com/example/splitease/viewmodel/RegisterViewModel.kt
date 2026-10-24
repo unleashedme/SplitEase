@@ -12,6 +12,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.splitease.data.Repository
 import com.example.splitease.dto.UserDto
 import com.example.splitease.ui.AppApplication
+import com.example.splitease.ui.RequestToasts
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
@@ -61,10 +62,12 @@ class RegisterViewModel(private val repository: Repository): ViewModel() {
                         )
                     )
                     println("Register: after api call")
+                    RequestToasts.success("Account created, please log in")
                     _navigateToLoginScreen.emit(Unit)
                     registerState = RegisterState.Success(response = "Registered Successfully")
                 }catch(e: Exception){
                     println("REGISTER: exception = ${e::class.java} ${e.message}")
+                    RequestToasts.failure("Registration failed", e)
                     registerState = RegisterState.Error(e.message ?: "error")
                 }
             }

@@ -17,7 +17,15 @@ data class GroupDto(
 data class ExpenseDto(
     val groupId: String,
     val amount: Double,
-    val description: String
+    val description: String,
+    val splitType: String = "EQUAL",
+    val splits: List<SplitEntryDto> = emptyList()
+)
+
+// value means: ignored for EQUAL, amount for EXACT, percentage for PERCENTAGE, weight for SHARES
+data class SplitEntryDto(
+    val userId: String,
+    val value: Double?
 )
 
 data class ExpenseSplitDto(

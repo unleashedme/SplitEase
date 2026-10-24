@@ -15,6 +15,8 @@ class AppApplication: Application() {
         container = DefaultAppContainer(authStore)
     }
     fun resetContainer() {
+        // Drop the logged-out user's cached data and stop any refresh still running
+        container.dataStore.close()
         container = DefaultAppContainer(authStore)
     }
 }

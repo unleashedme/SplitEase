@@ -91,7 +91,6 @@ fun GroupDetailsScreen(
                     onDeleteGroupClicked = {
                         groupViewModel.deleteGroup(groupId){
                             navigateBack()
-                            groupViewModel.getGroupScreenData()
 
                         }
                     },
@@ -353,7 +352,8 @@ fun GroupExpensesList(
                         expenseName = expense.description,
                         date = expense.date,
                         amount = expense.amount,
-                        split = expense.splitPerPerson,
+                        splitLabel = expense.splitPerPerson?.let { "₹$it per person" }
+                            ?: "Custom split · your share ₹${"%.2f".format(expense.userShare)}",
                         payerName = if(!expense.userPaid) expense.payerName else "You"
                     )
                 }
@@ -368,7 +368,7 @@ fun GroupExpensesCard(
     expenseName: String,
     date: String,
     amount: Double,
-    split: Double,
+    splitLabel: String,
     payerName: String
 ){
     Card(
@@ -438,7 +438,7 @@ fun GroupExpensesCard(
                     )
                     Spacer(modifier = Modifier.padding(4.dp))
                     Text(
-                        text = "₹$split per person",
+                        text = splitLabel,
                         fontSize = 16.sp,
                         color = Color.Gray
                     )

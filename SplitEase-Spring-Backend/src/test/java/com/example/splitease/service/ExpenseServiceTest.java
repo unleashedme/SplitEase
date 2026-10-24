@@ -141,6 +141,185 @@ class ExpenseServiceTest {
                 .isLessThan(new BigDecimal("0.01").multiply(BigDecimal.valueOf(memberCount)));
     }
 
+    private AddExpenseRequest customRequest(String amount, SplitType type, Object... userValuePairs) {
+        AddExpenseRequest req = request(trip.getId(), amount, "Custom");
+        req.setSplitType(type);
+        List<AddExpenseRequest.SplitEntry> entries = new java.util.ArrayList<>();
+        for (int i = 0; i < userValuePairs.length; i += 2) {
+            Object value = userValuePairs[i + 1];
+            entries.add(new AddExpenseRequest.SplitEntry(((Users) userValuePairs[i]).getId(),
+                    value == null ? null : new BigDecimal(value.toString())));
+        }
+        req.setSplits(entries);
+        return req;
+    }
+
+    private List<ExpenseSplits> savedSplits(int expectedCount) {
+        ArgumentCaptor<ExpenseSplits> splitCaptor = ArgumentCaptor.forClass(ExpenseSplits.class);
+        verify(expenseSplitRepo, times(expectedCount)).save(splitCaptor.capture());
+        return splitCaptor.getAllValues();
+    }
+
+    private BigDecimal shareOf(List<ExpenseSplits> splits, Users u) {
+        return splits.stream().filter(s -> s.getUser() == u).findFirst().orElseThrow().getShareAmount();
+    }
+
+    @Test
+    void addExpenseEqualSplitBetweenChosenMembersOnly() {
+        when(userRepo.findByEmail("alice@test.com")).thenReturn(alice);
+        groupWithMembers(alice, bob, carol);
+
+        expenseService.addExpense(customRequest("100", SplitType.EQUAL, alice, null, bob, null), "alice@test.com");
+
+        List<ExpenseSplits> splits = savedSplits(2);
+        assertThat(splits).extracting(ExpenseSplits::getUser).containsExactly(alice, bob);
+        assertThat(shareOf(splits, alice)).isEqualByComparingTo("50.00");
+        assertThat(shareOf(splits, bob)).isEqualByComparingTo("50.00");
+    }
+
+    @Test
+    void addExpenseExactSplitUsesGivenAmountsAndSkipsZeroes() {
+        when(userRepo.findByEmail("alice@test.com")).thenReturn(alice);
+        groupWithMembers(alice, bob, carol);
+
+        expenseService.addExpense(customRequest("100", SplitType.EXACT, alice, "70", bob, "30.00", carol, "0"), "alice@test.com");
+
+        ArgumentCaptor<Expenses> expenseCaptor = ArgumentCaptor.forClass(Expenses.class);
+        verify(expenseRepo).save(expenseCaptor.capture());
+        assertThat(expenseCaptor.getValue().getSplitType()).isEqualTo(SplitType.EXACT);
+
+        List<ExpenseSplits> splits = savedSplits(2);
+        assertThat(shareOf(splits, alice)).isEqualByComparingTo("70");
+        assertThat(shareOf(splits, bob)).isEqualByComparingTo("30");
+        assertThat(splits).filteredOn(s -> s.getUser() == bob).singleElement()
+                .satisfies(s -> assertThat(s.getSettled()).isFalse());
+    }
+
+    @Test
+    void addExpenseWherePayerIsNotSharingLeavesOthersOwingEverything() {
+        when(userRepo.findByEmail("alice@test.com")).thenReturn(alice);
+        groupWithMembers(alice, bob, carol);
+
+        expenseService.addExpense(customRequest("100", SplitType.EXACT, bob, "60", carol, "40"), "alice@test.com");
+
+        List<ExpenseSplits> splits = savedSplits(2);
+        assertThat(splits).extracting(ExpenseSplits::getUser).containsExactly(bob, carol);
+        assertThat(splits).allSatisfy(s -> assertThat(s.getSettled()).isFalse());
+    }
+
+    @Test
+    void addExpensePercentageSplit() {
+        when(userRepo.findByEmail("alice@test.com")).thenReturn(alice);
+        groupWithMembers(alice, bob, carol);
+
+        expenseService.addExpense(customRequest("250", SplitType.PERCENTAGE, alice, "50", bob, "30", carol, "20"), "alice@test.com");
+
+        List<ExpenseSplits> splits = savedSplits(3);
+        assertThat(shareOf(splits, alice)).isEqualByComparingTo("125.00");
+        assertThat(shareOf(splits, bob)).isEqualByComparingTo("75.00");
+        assertThat(shareOf(splits, carol)).isEqualByComparingTo("50.00");
+    }
+
+    @Test
+    void addExpenseSharesSplitGivesRoundingRemainderToPayer() {
+        when(userRepo.findByEmail("bob@test.com")).thenReturn(bob);
+        groupWithMembers(alice, bob, carol);
+
+        expenseService.addExpense(customRequest("100", SplitType.SHARES, alice, "1", bob, "1", carol, "1"), "bob@test.com");
+
+        List<ExpenseSplits> splits = savedSplits(3);
+        assertThat(shareOf(splits, alice)).isEqualByComparingTo("33.33");
+        assertThat(shareOf(splits, bob)).isEqualByComparingTo("33.34");
+        assertThat(shareOf(splits, carol)).isEqualByComparingTo("33.33");
+    }
+
+    @Test
+    void addExpenseSharesSplitWeightsShares() {
+        when(userRepo.findByEmail("alice@test.com")).thenReturn(alice);
+        groupWithMembers(alice, bob, carol);
+
+        expenseService.addExpense(customRequest("100", SplitType.SHARES, alice, "2", bob, "1", carol, "1"), "alice@test.com");
+
+        List<ExpenseSplits> splits = savedSplits(3);
+        assertThat(shareOf(splits, alice)).isEqualByComparingTo("50.00");
+        assertThat(shareOf(splits, bob)).isEqualByComparingTo("25.00");
+        assertThat(shareOf(splits, carol)).isEqualByComparingTo("25.00");
+    }
+
+    @Test
+    void addExpenseRemainderGoesToFirstParticipantWhenPayerNotSharing() {
+        when(userRepo.findByEmail("alice@test.com")).thenReturn(alice);
+        groupWithMembers(alice, bob, carol);
+
+        expenseService.addExpense(customRequest("0.05", SplitType.EQUAL, bob, null, carol, null), "alice@test.com");
+
+        List<ExpenseSplits> splits = savedSplits(2);
+        assertThat(shareOf(splits, bob)).isEqualByComparingTo("0.03");
+        assertThat(shareOf(splits, carol)).isEqualByComparingTo("0.02");
+    }
+
+    static java.util.stream.Stream<org.junit.jupiter.params.provider.Arguments> invalidSplits() {
+        return java.util.stream.Stream.of(
+                org.junit.jupiter.params.provider.Arguments.of("exact total too low", SplitType.EXACT, new String[]{"50", "40"}),
+                org.junit.jupiter.params.provider.Arguments.of("exact with fractions of paise", SplitType.EXACT, new String[]{"50.005", "49.995"}),
+                org.junit.jupiter.params.provider.Arguments.of("percentages not 100", SplitType.PERCENTAGE, new String[]{"50", "40"}),
+                org.junit.jupiter.params.provider.Arguments.of("negative value", SplitType.SHARES, new String[]{"2", "-1"}),
+                org.junit.jupiter.params.provider.Arguments.of("missing value", SplitType.EXACT, new String[]{"100", null}),
+                org.junit.jupiter.params.provider.Arguments.of("nobody sharing", SplitType.SHARES, new String[]{"0", "0"})
+        );
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @org.junit.jupiter.params.provider.MethodSource("invalidSplits")
+    void addExpenseRejectsInvalidCustomSplit(String name, SplitType type, String[] values) {
+        when(userRepo.findByEmail("alice@test.com")).thenReturn(alice);
+        groupWithMembers(alice, bob);
+
+        assertThatThrownBy(() -> expenseService.addExpense(
+                customRequest("100", type, alice, values[0], bob, values[1]), "alice@test.com"))
+                .isInstanceOfSatisfying(ResponseStatusException.class,
+                        e -> assertThat(e.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+        verifyNoInteractions(expenseRepo, expenseSplitRepo, notificationService);
+    }
+
+    @Test
+    void addExpenseRejectsSplitWithNonMember() {
+        Users mallory = user("Mallory", "mallory@test.com");
+        when(userRepo.findByEmail("alice@test.com")).thenReturn(alice);
+        groupWithMembers(alice, bob);
+
+        assertThatThrownBy(() -> expenseService.addExpense(
+                customRequest("100", SplitType.EXACT, alice, "50", mallory, "50"), "alice@test.com"))
+                .isInstanceOfSatisfying(ResponseStatusException.class,
+                        e -> assertThat(e.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+        verifyNoInteractions(expenseRepo, expenseSplitRepo);
+    }
+
+    @Test
+    void addExpenseRejectsDuplicateMemberInSplit() {
+        when(userRepo.findByEmail("alice@test.com")).thenReturn(alice);
+        groupWithMembers(alice, bob);
+
+        assertThatThrownBy(() -> expenseService.addExpense(
+                customRequest("100", SplitType.EXACT, bob, "50", bob, "50"), "alice@test.com"))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("more than once");
+        verifyNoInteractions(expenseRepo, expenseSplitRepo);
+    }
+
+    @Test
+    void addExpenseRejectsCustomTypeWithoutSplits() {
+        when(userRepo.findByEmail("alice@test.com")).thenReturn(alice);
+        groupWithMembers(alice, bob);
+        AddExpenseRequest req = request(trip.getId(), "100", "x");
+        req.setSplitType(SplitType.PERCENTAGE);
+
+        assertThatThrownBy(() -> expenseService.addExpense(req, "alice@test.com"))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Split details are required");
+        verifyNoInteractions(expenseRepo, expenseSplitRepo);
+    }
+
     @Test
     void addExpenseNotifiesOtherMembersWithTokensOnly() {
         alice.setFcmToken("alice-token");

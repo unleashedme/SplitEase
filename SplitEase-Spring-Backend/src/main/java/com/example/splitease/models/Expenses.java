@@ -26,6 +26,11 @@ public class Expenses {
     private BigDecimal amount;
     private String description;
 
+    // Null for expenses created before custom splits existed; those were split equally
+    @Enumerated(EnumType.STRING)
+    @Column(name = "split_type")
+    private SplitType splitType;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private final Instant createdAt = Instant.now();
 
@@ -80,6 +85,14 @@ public class Expenses {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public SplitType getSplitType() {
+        return splitType;
+    }
+
+    public void setSplitType(SplitType splitType) {
+        this.splitType = splitType;
     }
 
     public Instant getCreatedAt() {
