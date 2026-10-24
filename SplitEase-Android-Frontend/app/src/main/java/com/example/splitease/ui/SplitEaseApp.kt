@@ -94,6 +94,27 @@ sealed class BottomNavItem(
     )
 }
 
+/**
+ * Switches bottom-bar tabs. Dashboard is the home tab and always sits at the bottom of the back
+ * stack, so going there just pops back to it. Navigating to it with saveState/restoreState instead
+ * would restore the tab stack that was saved under Dashboard, i.e. bounce back to the tab you left.
+ */
+fun NavHostController.navigateToTab(route: String) {
+    if (route == DashboardDestination.route) {
+        if (!popBackStack(DashboardDestination.route, inclusive = false)) {
+            navigate(DashboardDestination.route) { launchSingleTop = true }
+        }
+        return
+    }
+    navigate(route) {
+        popUpTo(DashboardDestination.route) {
+            saveState = true
+        }
+        launchSingleTop = true
+        restoreState = true
+    }
+}
+
 @Composable
 fun SplitEaseBottomBar(
     navController: NavHostController = rememberNavController()
@@ -112,15 +133,7 @@ fun SplitEaseBottomBar(
         items.forEach { item ->
             NavigationBarItem(
                 selected = currentRoute == item.route,
-                onClick = {
-                    navController.navigate(item.route) {
-                        popUpTo(DashboardDestination.route) {
-                            saveState = true
-                        }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
-                },
+                onClick = { navController.navigateToTab(item.route) },
                 icon = {
                     Icon(
                         painter = painterResource(item.icon),

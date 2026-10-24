@@ -78,6 +78,7 @@ import com.example.splitease.FCMHandler
 import com.example.splitease.R
 import com.example.splitease.ui.SplitEaseBottomBar
 import com.example.splitease.ui.SplitEaseTopAppBar
+import com.example.splitease.ui.navigateToTab
 import com.example.splitease.ui.model.ActivityExpenseDto
 import com.example.splitease.ui.model.DashboardStatResponse
 import com.example.splitease.ui.model.GroupDetailResponse
@@ -261,7 +262,7 @@ fun DashboardScreen(
                 item{
                     RecentExpenses(
                         activityViewModel = activityViewModel,
-                        viewAllExpenses = {navController.navigate(ActivityDestination.route)},
+                        viewAllExpenses = {navController.navigateToTab(ActivityDestination.route)},
                         modifier = Modifier
                             .padding(dimensionResource(R.dimen.smallPadding))
                     )
@@ -269,7 +270,7 @@ fun DashboardScreen(
                 item{
                     ActiveGroups(
                         activeGroupList = activeGroups,
-                        viewAllGroups = {navController.navigate(GroupDestination.route)},
+                        viewAllGroups = {navController.navigateToTab(GroupDestination.route)},
                         modifier = Modifier
                             .padding(dimensionResource(R.dimen.smallPadding))
                     )
