@@ -61,12 +61,15 @@ public class ExpenseService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You are not a member of this group");
         }
 
+        // Round shares down; the payer absorbs the leftover paise so shares always add up to the amount
         BigDecimal equalShare =
                 request.getAmount().divide(
                         BigDecimal.valueOf(memberCount),
                         2,
-                        RoundingMode.HALF_UP
+                        RoundingMode.DOWN
                 );
+        BigDecimal payerShare = request.getAmount()
+                .subtract(equalShare.multiply(BigDecimal.valueOf(memberCount - 1)));
 
 
         Expenses expense = new Expenses();
@@ -82,10 +85,11 @@ public class ExpenseService {
             ExpenseSplits split = new ExpenseSplits();
             split.setExpense(expense);
             split.setUser(gm.getUser());
-            split.setShareAmount(equalShare);
             if (gm.getUser().getId().equals(payer.getId())) {
+                split.setShareAmount(payerShare);
                 split.setSettled(true);   // payer owes nothing
             } else {
+                split.setShareAmount(equalShare);
                 split.setSettled(false);  // others owe payer
             }
 

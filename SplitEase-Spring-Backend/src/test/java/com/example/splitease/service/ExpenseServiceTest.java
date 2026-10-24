@@ -7,6 +7,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
@@ -98,7 +99,7 @@ class ExpenseServiceTest {
     }
 
     @Test
-    void addExpenseRoundsSharesToTwoDecimals() {
+    void addExpensePayerAbsorbsRoundingRemainder() {
         when(userRepo.findByEmail("alice@test.com")).thenReturn(alice);
         groupWithMembers(alice, bob, carol);
 
@@ -106,8 +107,38 @@ class ExpenseServiceTest {
 
         ArgumentCaptor<ExpenseSplits> splitCaptor = ArgumentCaptor.forClass(ExpenseSplits.class);
         verify(expenseSplitRepo, times(3)).save(splitCaptor.capture());
-        assertThat(splitCaptor.getAllValues())
-                .allSatisfy(s -> assertThat(s.getShareAmount()).isEqualTo(new BigDecimal("33.33")));
+        List<ExpenseSplits> splits = splitCaptor.getAllValues();
+        assertThat(splits).filteredOn(s -> s.getUser() != alice)
+                .allSatisfy(s -> assertThat(s.getShareAmount()).isEqualByComparingTo("33.33"));
+        assertThat(splits).filteredOn(s -> s.getUser() == alice).singleElement()
+                .satisfies(s -> assertThat(s.getShareAmount()).isEqualByComparingTo("33.34"));
+    }
+
+    @ParameterizedTest
+    @CsvSource({"100, 3", "100.01, 3", "0.01, 3", "0.05, 4", "999.99, 7", "10, 2", "1, 1"})
+    void addExpenseSharesAlwaysSumToAmount(String amount, int memberCount) {
+        Users[] users = new Users[memberCount];
+        users[0] = alice;
+        for (int i = 1; i < memberCount; i++) users[i] = user("U" + i, "u" + i + "@test.com");
+        when(userRepo.findByEmail("alice@test.com")).thenReturn(alice);
+        groupWithMembers(users);
+
+        expenseService.addExpense(request(trip.getId(), amount, "x"), "alice@test.com");
+
+        ArgumentCaptor<ExpenseSplits> splitCaptor = ArgumentCaptor.forClass(ExpenseSplits.class);
+        verify(expenseSplitRepo, times(memberCount)).save(splitCaptor.capture());
+        List<ExpenseSplits> splits = splitCaptor.getAllValues();
+        BigDecimal total = splits.stream().map(ExpenseSplits::getShareAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+        assertThat(total).isEqualByComparingTo(amount);
+
+        // Non-payers never pay more than the payer, and differ from the payer by under 1 paisa per member
+        BigDecimal payerShare = splits.stream().filter(s -> s.getUser() == alice).findFirst().orElseThrow().getShareAmount();
+        assertThat(splits).filteredOn(s -> s.getUser() != alice).allSatisfy(s -> {
+            assertThat(s.getShareAmount()).isLessThanOrEqualTo(payerShare);
+            assertThat(s.getShareAmount().scale()).isLessThanOrEqualTo(2);
+        });
+        assertThat(payerShare.subtract(splits.get(splits.size() - 1).getShareAmount()))
+                .isLessThan(new BigDecimal("0.01").multiply(BigDecimal.valueOf(memberCount)));
     }
 
     @Test
