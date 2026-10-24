@@ -88,7 +88,11 @@ public class GroupService {
                 .map(gm -> new UserGroupResponse(
                         gm.getGroup().getId(),
                         gm.getGroup().getName(),
-                        gm.getRole()
+                        gm.getRole(),
+                        // Members are needed by the app to split an expense between specific people
+                        groupMemberRepo.findByGroup(gm.getGroup()).stream()
+                                .map(m -> new GroupMemberDTO(m.getUser().getId(), m.getUser().getName(), m.getUser().getEmail()))
+                                .toList()
                 ))
                 .toList();
     }
@@ -119,14 +123,29 @@ public class GroupService {
 
             // Map Expenses
             List<ExpenseDTO> expenseDTOs = groupExpenses.stream().map(e -> {
-                BigDecimal splitCount = new BigDecimal(allMembers.size());
+                List<ExpenseSplits> splits = e.getSplits() == null ? List.of() : e.getSplits();
+                SplitType splitType = e.getSplitType() == null ? SplitType.EQUAL : e.getSplitType();
+
+                BigDecimal splitPerPerson = null;
+                if (splitType == SplitType.EQUAL) {
+                    int splitCount = splits.isEmpty() ? allMembers.size() : splits.size();
+                    splitPerPerson = e.getAmount().divide(new BigDecimal(splitCount), 2, RoundingMode.HALF_UP);
+                }
+                BigDecimal myShare = splits.stream()
+                        .filter(s -> s.getUser().getEmail().equals(userEmail))
+                        .map(ExpenseSplits::getShareAmount)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+
                 return new ExpenseDTO(
                         e.getDescription(),
                         e.getAmount(),
                         e.getPayer().getName(),
                         e.getPayer().getEmail().equals(userEmail),
                         e.getCreatedAt().toString(),
-                        e.getAmount().divide(splitCount, 2, RoundingMode.HALF_UP)
+                        splitPerPerson,
+                        splitType.name(),
+                        myShare,
+                        splits.stream().map(s -> new ExpenseShareDTO(s.getUser().getName(), s.getShareAmount())).toList()
                 );
             }).toList();
 

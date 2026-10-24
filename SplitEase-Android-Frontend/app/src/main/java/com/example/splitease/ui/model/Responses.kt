@@ -10,7 +10,14 @@ data class CreateGroupResponse(
 data class UserGroupResponse(
     val groupId: String,
     val groupName: String,
-    val role: String
+    val role: String,
+    val members: List<GroupMemberDto> = emptyList()
+)
+
+data class GroupMemberDto(
+    val userId: String,
+    val name: String,
+    val email: String
 )
 
 data class SettlementSummary(
@@ -65,7 +72,15 @@ data class ExpenseDTO(
     val payerName: String,
     val userPaid: Boolean,
     val date: String,
-    val splitPerPerson: Double
+    val splitPerPerson: Double?, // null when the expense wasn't split equally
+    val splitType: String = "EQUAL",
+    val userShare: Double = 0.0,
+    val shares: List<ExpenseShareDto> = emptyList()
+)
+
+data class ExpenseShareDto(
+    val name: String,
+    val amount: Double
 )
 
 

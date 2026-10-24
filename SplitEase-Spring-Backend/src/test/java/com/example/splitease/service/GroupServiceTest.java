@@ -161,6 +161,41 @@ class GroupServiceTest {
     }
 
     @Test
+    void getGroupsOfUserIncludesMembersForSplitting() {
+        Groups trip = group("Trip", alice);
+        when(groupMemberRepo.findAllByUserEmail("alice@test.com")).thenReturn(List.of(member(trip, alice, "admin")));
+        when(groupMemberRepo.findByGroup(trip)).thenReturn(List.of(member(trip, alice, "admin"), member(trip, bob, "member")));
+
+        List<UserGroupResponse> groups = groupService.getGroupsOfUser("alice@test.com");
+
+        assertThat(groups.get(0).getMembers()).containsExactly(
+                new GroupMemberDTO(alice.getId(), "Alice", "alice@test.com"),
+                new GroupMemberDTO(bob.getId(), "Bob", "bob@test.com"));
+    }
+
+    @Test
+    void getGroupScreenDataShowsCustomSplitShares() {
+        Groups trip = group("Trip", alice);
+        when(groupMemberRepo.findByUserEmail("bob@test.com")).thenReturn(List.of(member(trip, bob, "member")));
+        Expenses taxi = expense(trip, alice, "100.00", "Taxi");
+        taxi.setSplitType(SplitType.EXACT);
+        split(taxi, alice, "70.00", true);
+        split(taxi, bob, "30.00", false);
+        when(expenseRepo.findByGroup(trip)).thenReturn(List.of(taxi));
+        when(groupMemberRepo.findByGroup(trip)).thenReturn(List.of(member(trip, alice, "admin"), member(trip, bob, "member")));
+
+        ExpenseDTO dto = groupService.getGroupScreenData("bob@test.com").groups().get(0).expenses().get(0);
+
+        assertThat(dto.splitType()).isEqualTo("EXACT");
+        assertThat(dto.splitPerPerson()).isNull();
+        assertThat(dto.userShare()).isEqualByComparingTo("30.00");
+        assertThat(dto.shares()).extracting(ExpenseShareDTO::name, s -> s.amount().toPlainString())
+                .containsExactly(
+                        org.assertj.core.groups.Tuple.tuple("Alice", "70.00"),
+                        org.assertj.core.groups.Tuple.tuple("Bob", "30.00"));
+    }
+
+    @Test
     void getGroupScreenDataAggregatesAcrossGroups() {
         Groups trip = group("Trip", alice);
         Groups flat = group("Flat", alice);
@@ -205,6 +240,9 @@ class GroupServiceTest {
         assertThat(hotelDto.payerName()).isEqualTo("Alice");
         assertThat(hotelDto.userPaid()).isTrue();
         assertThat(hotelDto.splitPerPerson()).isEqualByComparingTo("45.00");
+        assertThat(hotelDto.splitType()).isEqualTo("EQUAL");
+        assertThat(hotelDto.userShare()).isEqualByComparingTo("45.00");
+        assertThat(hotelDto.shares()).extracting(ExpenseShareDTO::name).containsExactly("Alice", "Bob");
 
         GroupDetailResponse flatDetail = res.groups().get(1);
         assertThat(flatDetail.isActive()).isFalse();

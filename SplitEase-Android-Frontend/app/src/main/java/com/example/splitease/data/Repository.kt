@@ -4,6 +4,7 @@ import com.example.splitease.network.ApiService
 import com.example.splitease.dto.ExpenseDto
 import com.example.splitease.dto.GroupDto
 import com.example.splitease.dto.SettlementDto
+import com.example.splitease.dto.SplitEntryDto
 import com.example.splitease.dto.UserDto
 import com.example.splitease.ui.model.ActivitySummaryDto
 import com.example.splitease.ui.model.CreateGroupResponse
@@ -23,7 +24,7 @@ interface Repository{
 
     suspend fun createGroup(groupName: String, members: List<String>): Response<CreateGroupResponse>
 
-    suspend fun addExpense(groupId: String, amount: Double, description: String) : Response<Unit>
+    suspend fun addExpense(groupId: String, amount: Double, description: String, splitType: String, splits: List<SplitEntryDto>) : Response<Unit>
 
     suspend fun getMyGroups(): List<UserGroupResponse>
 
@@ -51,7 +52,7 @@ class NetworkRepository(
     override suspend fun login(email: String, password: String): LogInResponse = apiService.login(LogInRequests(email, password))
     override suspend fun register(userDetails: UserDto) = apiService.register(userDetails)
     override suspend fun createGroup(groupName: String, members: List<String>) = apiService.createGroup(GroupDto(groupName, members))
-    override suspend fun addExpense(groupId: String, amount: Double, description: String ) = apiService.addExpense(ExpenseDto(groupId, amount, description))
+    override suspend fun addExpense(groupId: String, amount: Double, description: String, splitType: String, splits: List<SplitEntryDto>) = apiService.addExpense(ExpenseDto(groupId, amount, description, splitType, splits))
     override suspend fun getMyGroups(): List<UserGroupResponse>  = apiService.getMyGroups()
     override suspend fun getMyPayables(): List<SettlementSummary> = apiService.getPayables()
     override suspend fun recordSettlement(settlementDto: SettlementDto) = apiService.recordSettlement(settlementDto)

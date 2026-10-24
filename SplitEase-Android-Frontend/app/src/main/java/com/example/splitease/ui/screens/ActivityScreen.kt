@@ -298,7 +298,10 @@ fun ActivityScreen(
                 dashboardViewModel = dashboardViewModel,
                 groupViewModel = groupViewModel,
                 addExpenseViewModel = addExpenseViewModel,
-                onClose = { showAddExpensePopUp = false }
+                onClose = {
+                    showAddExpensePopUp = false
+                    addExpenseViewModel.resetUiState()
+                }
             )
         }
     }
