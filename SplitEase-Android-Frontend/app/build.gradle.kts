@@ -39,6 +39,10 @@ android {
     buildFeatures {
         compose = true
     }
+    testOptions {
+        // Robolectric-based tests (navigation, login) need the merged Android resources
+        unitTests.isIncludeAndroidResources = true
+    }
 }
 
 dependencies {
@@ -93,6 +97,12 @@ dependencies {
 
 
     testImplementation(libs.junit)
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
+    // Real org.json for JVM tests; the android.jar copy is a stub that throws
+    testImplementation("org.json:json:20240303")
+    testImplementation("org.robolectric:robolectric:4.14.1")
+    testImplementation("androidx.test:core-ktx:1.6.1")
+    testImplementation("androidx.navigation:navigation-testing:2.8.7")
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
