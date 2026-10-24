@@ -41,9 +41,15 @@ class ActivityViewModel(
     val activityUiState: ActivitySummaryDto?
         get() = dataStore.activity
 
+    val isRefreshing: Boolean
+        get() = dataStore.isRefreshing
+
     init {
         dataStore.loadIfNeeded()
     }
+
+    // Pull to refresh
+    fun refresh() = dataStore.refresh()
 
     private val _sortPreference = MutableStateFlow(SortPreference.NEWEST)
     val sortPreference = _sortPreference.asStateFlow()

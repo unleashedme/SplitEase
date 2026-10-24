@@ -22,9 +22,15 @@ class DashboardViewModel(private val dataStore: AppDataStore): ViewModel() {
     val dashboardUiState: DashboardStatResponse?
         get() = dataStore.dashboardStats
 
+    val isRefreshing: Boolean
+        get() = dataStore.isRefreshing
+
     init {
         dataStore.loadIfNeeded()
     }
+
+    // Pull to refresh
+    fun refresh() = dataStore.refresh()
 
     companion object{
         val Factory: ViewModelProvider.Factory = viewModelFactory {

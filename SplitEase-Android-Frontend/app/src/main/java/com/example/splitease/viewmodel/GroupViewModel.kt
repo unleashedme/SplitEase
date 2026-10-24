@@ -40,9 +40,15 @@ class GroupViewModel(
     val groupUiState: GroupScreenDataResponse?
         get() = dataStore.groupScreenData
 
+    val isRefreshing: Boolean
+        get() = dataStore.isRefreshing
+
     init {
         dataStore.loadIfNeeded()
     }
+
+    // Pull to refresh
+    fun refresh() = dataStore.refresh()
 
     private val _groupSortOrder = MutableStateFlow(GroupSortOrder.MOST_RECENT)
     val groupSortOrder = _groupSortOrder.asStateFlow()

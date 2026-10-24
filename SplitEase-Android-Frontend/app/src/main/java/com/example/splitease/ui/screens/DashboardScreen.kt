@@ -36,6 +36,8 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilterChip
@@ -137,134 +139,141 @@ fun DashboardScreen(
         },
         containerColor = MaterialTheme.colorScheme.background
     ){ innerPadding->
-        LazyColumn(
-            modifier = modifier
+        PullToRefreshBox(
+            isRefreshing = dashboardViewModel.isRefreshing,
+            onRefresh = dashboardViewModel::refresh,
+            modifier = Modifier
                 .padding(innerPadding)
-                .fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement
-                .spacedBy(dimensionResource(R.dimen.smallPadding))
+                .fillMaxSize()
         ) {
-            item {
-                Text(
-                    text = "Welcome to Splitease",
-                    fontSize = 28.sp,
-                    textAlign = TextAlign.Start,
-                    modifier = Modifier
-                        .padding(dimensionResource(R.dimen.smallPadding))
-                        .fillMaxWidth(),
+            LazyColumn(
+                modifier = modifier
+                    .fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement
+                    .spacedBy(dimensionResource(R.dimen.smallPadding))
+            ) {
+                item {
+                    Text(
+                        text = "Welcome to Splitease",
+                        fontSize = 28.sp,
+                        textAlign = TextAlign.Start,
+                        modifier = Modifier
+                            .padding(dimensionResource(R.dimen.smallPadding))
+                            .fillMaxWidth(),
 
+                        )
+                }
+                item {
+                    Text(
+                        text = "Track and split expenses effortlessly with your friends and family",
+                        fontSize = 16.sp,
+                        color = Color.Gray,
+                        textAlign = TextAlign.Start,
+                        modifier = Modifier
+                            .padding(dimensionResource(R.dimen.smallPadding))
+                            .fillMaxWidth()
                     )
-            }
-            item {
-                Text(
-                    text = "Track and split expenses effortlessly with your friends and family",
-                    fontSize = 16.sp,
-                    color = Color.Gray,
-                    textAlign = TextAlign.Start,
-                    modifier = Modifier
-                        .padding(dimensionResource(R.dimen.smallPadding))
-                        .fillMaxWidth()
-                )
-            }
-            item {
-                DashboardStatsList(
-                    dashboardStats = dashboardViewModel.dashboardUiState,
-                    activeGroupsCount = groupViewModel.groupUiState?.activeGroupsCount?:0,
-                    modifier = Modifier
-                        .padding(dimensionResource(R.dimen.smallPadding))
-                )
-            }
-            item{
-                ElevatedButton(
-                    onClick = { showCreateGroupPopUp = true },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(dimensionResource(R.dimen.smallPadding)),
-                    shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),
-                    colors = ButtonDefaults.elevatedButtonColors(Color.Black)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
+                }
+                item {
+                    DashboardStatsList(
+                        dashboardStats = dashboardViewModel.dashboardUiState,
+                        activeGroupsCount = groupViewModel.groupUiState?.activeGroupsCount?:0,
+                        modifier = Modifier
+                            .padding(dimensionResource(R.dimen.smallPadding))
+                    )
+                }
+                item{
+                    ElevatedButton(
+                        onClick = { showCreateGroupPopUp = true },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(dimensionResource(R.dimen.smallPadding)),
+                        shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),
+                        colors = ButtonDefaults.elevatedButtonColors(Color.Black)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.add_group_96),
+                                contentDescription = "group Icon",
+                                tint = Color.White,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Text(
+                                text = " Create Group",
+                                color = Color.White,
+                                fontSize = 16.sp,
+                                modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding))
+                            )
+                        }
+                    }
+                }
+                item{
+                    ElevatedButton(
+                        onClick = { showAddExpensePopUp = true },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(dimensionResource(R.dimen.smallPadding)),
+                        shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),
+                        colors = ButtonDefaults.elevatedButtonColors(Color.White),
+                        border = BorderStroke(0.05.dp, Color.Gray)
                     ) {
                         Icon(
-                            painter = painterResource(R.drawable.add_group_96),
-                            contentDescription = "group Icon",
-                            tint = Color.White,
+                            painter = painterResource(R.drawable.add_96),
+                            contentDescription = "add Expense Icon",
+                            tint = Color.Black,
                             modifier = Modifier.size(24.dp)
                         )
                         Text(
-                            text = " Create Group",
-                            color = Color.White,
+                            text = " Add Expense",
+                            color = Color.Black,
                             fontSize = 16.sp,
                             modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding))
                         )
                     }
                 }
-            }
-            item{
-                ElevatedButton(
-                    onClick = { showAddExpensePopUp = true },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(dimensionResource(R.dimen.smallPadding)),
-                    shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),
-                    colors = ButtonDefaults.elevatedButtonColors(Color.White),
-                    border = BorderStroke(0.05.dp, Color.Gray)
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.add_96),
-                        contentDescription = "add Expense Icon",
-                        tint = Color.Black,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Text(
-                        text = " Add Expense",
-                        color = Color.Black,
-                        fontSize = 16.sp,
-                        modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding))
+                item{
+                    ElevatedButton(
+                        onClick = { showSettleUpPopUp = true },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(dimensionResource(R.dimen.smallPadding)),
+                        shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),
+                        colors = ButtonDefaults.elevatedButtonColors(Color.White),
+                        border = BorderStroke(0.05.dp, Color.Gray)
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.coin_in_hand_96),
+                            contentDescription = "payment Icon",
+                            tint = Color.Black,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Text(
+                            text = " Settle Up",
+                            color = Color.Black,
+                            fontSize = 16.sp,
+                            modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding))
+                        )
+                    }
+                }
+                item{
+                    RecentExpenses(
+                        activityViewModel = activityViewModel,
+                        viewAllExpenses = {navController.navigate(ActivityDestination.route)},
+                        modifier = Modifier
+                            .padding(dimensionResource(R.dimen.smallPadding))
                     )
                 }
-            }
-            item{
-                ElevatedButton(
-                    onClick = { showSettleUpPopUp = true },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(dimensionResource(R.dimen.smallPadding)),
-                    shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),
-                    colors = ButtonDefaults.elevatedButtonColors(Color.White),
-                    border = BorderStroke(0.05.dp, Color.Gray)
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.coin_in_hand_96),
-                        contentDescription = "payment Icon",
-                        tint = Color.Black,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Text(
-                        text = " Settle Up",
-                        color = Color.Black,
-                        fontSize = 16.sp,
-                        modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding))
+                item{
+                    ActiveGroups(
+                        activeGroupList = activeGroups,
+                        viewAllGroups = {navController.navigate(GroupDestination.route)},
+                        modifier = Modifier
+                            .padding(dimensionResource(R.dimen.smallPadding))
                     )
                 }
-            }
-            item{
-                RecentExpenses(
-                    activityViewModel = activityViewModel,
-                    viewAllExpenses = {navController.navigate(ActivityDestination.route)},
-                    modifier = Modifier
-                        .padding(dimensionResource(R.dimen.smallPadding))
-                )
-            }
-            item{
-                ActiveGroups(
-                    activeGroupList = activeGroups,
-                    viewAllGroups = {navController.navigate(GroupDestination.route)},
-                    modifier = Modifier
-                        .padding(dimensionResource(R.dimen.smallPadding))
-                )
             }
         }
     }

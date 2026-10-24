@@ -23,6 +23,8 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -125,159 +127,166 @@ fun ActivityScreen(
         },
         containerColor = MaterialTheme.colorScheme.background
     ){innerPadding ->
-        LazyColumn(
-            modifier = modifier
+        PullToRefreshBox(
+            isRefreshing = activityViewModel.isRefreshing,
+            onRefresh = activityViewModel::refresh,
+            modifier = Modifier
                 .padding(innerPadding)
-                .fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+                .fillMaxSize()
         ) {
-            item {
-                Text(
-                    text = "Activities",
-                    fontSize = 28.sp,
-                    textAlign = TextAlign.Start,
-                    modifier = Modifier
-                        .padding(dimensionResource(R.dimen.smallPadding))
-                        .fillMaxWidth()
-                )
-            }
-            item {
-                Text(
-                    text = "View and manage all your expenses and transactions",
-                    fontSize = 16.sp,
-                    color = Color.Gray,
-                    textAlign = TextAlign.Start,
-                    modifier = Modifier
-                        .padding(dimensionResource(R.dimen.smallPadding))
-                        .fillMaxWidth()
-                )
-            }
-            item{
-                ActivityStatsList(
-                    expenseCount = activityUiState?.totalExpensesCount?:0,
-                    totalExpense = activityUiState?.totalSpentCombined?:0.0,
-                    youPaid = activityUiState?.expensesPaidByUser?:0,
-                    settled = activityUiState?.settledExpensesCount?:0,
-                    modifier = Modifier
-                        .padding(dimensionResource(R.dimen.smallPadding))
-                )
-            }
-            item{
-                ElevatedButton(
-                    onClick = { showAddExpensePopUp = true },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(dimensionResource(R.dimen.smallPadding)),
-                    shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),
-                    colors = ButtonDefaults.elevatedButtonColors(Color.White),
-                    border = BorderStroke(width = 0.05.dp, color = Color.Gray)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
+            LazyColumn(
+                modifier = modifier
+                    .fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                item {
+                    Text(
+                        text = "Activities",
+                        fontSize = 28.sp,
+                        textAlign = TextAlign.Start,
+                        modifier = Modifier
+                            .padding(dimensionResource(R.dimen.smallPadding))
+                            .fillMaxWidth()
+                    )
+                }
+                item {
+                    Text(
+                        text = "View and manage all your expenses and transactions",
+                        fontSize = 16.sp,
+                        color = Color.Gray,
+                        textAlign = TextAlign.Start,
+                        modifier = Modifier
+                            .padding(dimensionResource(R.dimen.smallPadding))
+                            .fillMaxWidth()
+                    )
+                }
+                item{
+                    ActivityStatsList(
+                        expenseCount = activityUiState?.totalExpensesCount?:0,
+                        totalExpense = activityUiState?.totalSpentCombined?:0.0,
+                        youPaid = activityUiState?.expensesPaidByUser?:0,
+                        settled = activityUiState?.settledExpensesCount?:0,
+                        modifier = Modifier
+                            .padding(dimensionResource(R.dimen.smallPadding))
+                    )
+                }
+                item{
+                    ElevatedButton(
+                        onClick = { showAddExpensePopUp = true },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(dimensionResource(R.dimen.smallPadding)),
+                        shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),
+                        colors = ButtonDefaults.elevatedButtonColors(Color.White),
+                        border = BorderStroke(width = 0.05.dp, color = Color.Gray)
                     ) {
-                        Icon(
-                            painter = painterResource(R.drawable.money_bag_rupee_96),
-                            contentDescription = "add expense Icon",
-                            tint = Color.Black,
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Text(
-                            text = " Add Expense",
-                            color = Color.Black,
-                            fontSize = 16.sp,
-                            modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding))
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.money_bag_rupee_96),
+                                contentDescription = "add expense Icon",
+                                tint = Color.Black,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Text(
+                                text = " Add Expense",
+                                color = Color.Black,
+                                fontSize = 16.sp,
+                                modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding))
+                            )
+                        }
                     }
                 }
-            }
-            item{
-                Row(
-                    horizontalArrangement = Arrangement
-                        .spacedBy(dimensionResource(R.dimen.smallPadding)),
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = dimensionResource(R.dimen.smallPadding))
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.sorting_arrows_96),
-                        contentDescription = "sorting Icon",
-                        tint = Color.Gray,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Card(
+                item{
+                    Row(
+                        horizontalArrangement = Arrangement
+                            .spacedBy(dimensionResource(R.dimen.smallPadding)),
+                        verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
-                            .padding(4.dp)
                             .fillMaxWidth()
-                    ){
-                        ExposedDropdownMenuBox(
-                            expanded = preferenceListExpanded,
-                            onExpandedChange = { preferenceListExpanded = !preferenceListExpanded }
-                        ) {
-                            Row(
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(dimensionResource(R.dimen.mediumPadding))
-                                    .size(20.dp)
-                                    .menuAnchor(
-                                        type = MenuAnchorType.PrimaryNotEditable,
-                                        enabled = true
-                                    )
-                            ) {
-                                Text(
-                                    text = selectedPreference.displayName,
-                                    color = Color.Black
-                                )
-                                Icon(
-                                    painter = painterResource(R.drawable.expand_arrow_96),
-                                    contentDescription = "Expand Icon",
-                                    tint = Color.Gray
-                                )
-                            }
-                            ExposedDropdownMenu(
+                            .padding(horizontal = dimensionResource(R.dimen.smallPadding))
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.sorting_arrows_96),
+                            contentDescription = "sorting Icon",
+                            tint = Color.Gray,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Card(
+                            modifier = Modifier
+                                .padding(4.dp)
+                                .fillMaxWidth()
+                        ){
+                            ExposedDropdownMenuBox(
                                 expanded = preferenceListExpanded,
-                                onDismissRequest = { preferenceListExpanded = false },
-                                shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),
-                                containerColor = Color.White
+                                onExpandedChange = { preferenceListExpanded = !preferenceListExpanded }
                             ) {
-                                SortPreference.entries.forEach { preference ->
-                                    DropdownMenuItem(
-                                        text = {
-                                            Text(
-                                                text = preference.displayName,
-                                                fontSize = 16.sp
-                                            )
-                                        },
-                                        onClick = {
-                                            activityViewModel.updateSortPreference(preference.displayName)
-                                            preferenceListExpanded = false
-                                        }
+                                Row(
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(dimensionResource(R.dimen.mediumPadding))
+                                        .size(20.dp)
+                                        .menuAnchor(
+                                            type = MenuAnchorType.PrimaryNotEditable,
+                                            enabled = true
+                                        )
+                                ) {
+                                    Text(
+                                        text = selectedPreference.displayName,
+                                        color = Color.Black
                                     )
+                                    Icon(
+                                        painter = painterResource(R.drawable.expand_arrow_96),
+                                        contentDescription = "Expand Icon",
+                                        tint = Color.Gray
+                                    )
+                                }
+                                ExposedDropdownMenu(
+                                    expanded = preferenceListExpanded,
+                                    onDismissRequest = { preferenceListExpanded = false },
+                                    shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),
+                                    containerColor = Color.White
+                                ) {
+                                    SortPreference.entries.forEach { preference ->
+                                        DropdownMenuItem(
+                                            text = {
+                                                Text(
+                                                    text = preference.displayName,
+                                                    fontSize = 16.sp
+                                                )
+                                            },
+                                            onClick = {
+                                                activityViewModel.updateSortPreference(preference.displayName)
+                                                preferenceListExpanded = false
+                                            }
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
                 }
-            }
-            item {
-                Spacer(modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding)))
-                ExpenseFilterTabs(
-                    selected = selectedFilter,
-                    onSelected = { selectedFilter = it }
-                )
-                Spacer(modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding)))
-            }
-            item{
-                ExpenseHistory(
-                    expenseHistory = commonList,
-                    totalCount = activityUiState?.expenseHistory?.size?:0,
-                    onExpenseClick = onExpenseClick,
-                    modifier = Modifier
-                        .padding(dimensionResource(R.dimen.smallPadding))
-                )
+                item {
+                    Spacer(modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding)))
+                    ExpenseFilterTabs(
+                        selected = selectedFilter,
+                        onSelected = { selectedFilter = it }
+                    )
+                    Spacer(modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding)))
+                }
+                item{
+                    ExpenseHistory(
+                        expenseHistory = commonList,
+                        totalCount = activityUiState?.expenseHistory?.size?:0,
+                        onExpenseClick = onExpenseClick,
+                        modifier = Modifier
+                            .padding(dimensionResource(R.dimen.smallPadding))
+                    )
+                }
             }
         }
     }

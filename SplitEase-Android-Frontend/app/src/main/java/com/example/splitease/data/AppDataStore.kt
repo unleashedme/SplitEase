@@ -44,6 +44,10 @@ class AppDataStore(private val repository: Repository) {
     var myGroups by mutableStateOf<List<UserGroupResponse>>(emptyList())
         private set
 
+    // Drives the pull-to-refresh spinner
+    var isRefreshing by mutableStateOf(false)
+        private set
+
     /** Loads everything the first time it's called; later calls do nothing. */
     fun loadIfNeeded() {
         if (!loaded) refresh()
@@ -54,6 +58,7 @@ class AppDataStore(private val repository: Repository) {
         loaded = true
         // A refresh already in flight would fetch the same thing, so restart it with fresh requests
         refreshJob?.cancel()
+        isRefreshing = true
         refreshJob = scope.launch {
             val results = listOf(
                 async { load("Couldn't load dashboard") { dashboardStats = repository.getDashboardStat() } },
@@ -64,6 +69,8 @@ class AppDataStore(private val repository: Repository) {
             ).awaitAll()
             // Retry on the next screen visit if anything failed, e.g. no connection at startup
             if (results.any { !it }) loaded = false
+            // Not reached by a refresh that was cancelled and replaced, so the spinner stays for the newer one
+            isRefreshing = false
         }
     }
 
