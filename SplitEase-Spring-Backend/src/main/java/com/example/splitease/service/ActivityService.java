@@ -55,7 +55,7 @@ public class ActivityService {
             boolean everyoneElsePaid = exp.getSplits().stream()
                     .allMatch(s -> Boolean.TRUE.equals(s.getSettled()));
 
-            boolean isSettledForUser = isPayer ? everyoneElsePaid : (mySplit != null && mySplit.getSettled());
+            boolean isSettledForUser = isPayer ? everyoneElsePaid : (mySplit != null && Boolean.TRUE.equals(mySplit.getSettled()));
 
             // 4. Update Stats
             if (isSettledForUser) settledCount++;
@@ -63,7 +63,7 @@ public class ActivityService {
             totalSpent = totalSpent.add(userShare);
 
             // 5. Determine "Owes To"
-            String owesTo = (!isPayer && mySplit != null && !mySplit.getSettled())
+            String owesTo = (!isPayer && mySplit != null && !Boolean.TRUE.equals(mySplit.getSettled()))
                     ? exp.getPayer().getName() : null;
 
             history.add(new ExpenseActivityDTO(

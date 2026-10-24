@@ -38,6 +38,10 @@ public class ExpenseService {
 
     public void addExpense(AddExpenseRequest request, String payerEmail) {
 
+        if (request.getAmount() == null || request.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Amount must be greater than zero");
+        }
+
         Users payer = userRepo.findByEmail(payerEmail);
 
         Groups group = groupRepo.findById(request.getGroupId())
@@ -50,12 +54,22 @@ public class ExpenseService {
             throw new RuntimeException("Group has no members");
         }
 
+        // Only members of the group can add expenses to it
+        boolean payerIsMember = members.stream()
+                .anyMatch(gm -> gm.getUser().getId().equals(payer.getId()));
+        if (!payerIsMember) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You are not a member of this group");
+        }
+
+        // Round shares down; the payer absorbs the leftover paise so shares always add up to the amount
         BigDecimal equalShare =
                 request.getAmount().divide(
                         BigDecimal.valueOf(memberCount),
                         2,
-                        RoundingMode.HALF_UP
+                        RoundingMode.DOWN
                 );
+        BigDecimal payerShare = request.getAmount()
+                .subtract(equalShare.multiply(BigDecimal.valueOf(memberCount - 1)));
 
 
         Expenses expense = new Expenses();
@@ -71,10 +85,11 @@ public class ExpenseService {
             ExpenseSplits split = new ExpenseSplits();
             split.setExpense(expense);
             split.setUser(gm.getUser());
-            split.setShareAmount(equalShare);
             if (gm.getUser().getId().equals(payer.getId())) {
+                split.setShareAmount(payerShare);
                 split.setSettled(true);   // payer owes nothing
             } else {
+                split.setShareAmount(equalShare);
                 split.setSettled(false);  // others owe payer
             }
 

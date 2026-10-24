@@ -39,8 +39,6 @@ public class SettlementService {
     public List<SettlementSummaryResponse> getMyPayables(String userEmail) {
         Users currentUser = userRepo.findByEmail(userEmail);
 
-        // 1. Use a single optimized query to get net balances with everyone
-        // You can also write a custom native query if JPA logic gets too complex
         List<Object[]> rawBalances = expenseSplitRepo.calculateNetBalances(currentUser.getId());
 
         List<SettlementSummaryResponse> payables = new ArrayList<>();
@@ -48,7 +46,8 @@ public class SettlementService {
         for (Object[] row : rawBalances) {
             String otherUserId = row[0].toString();
             String otherUserName = (String) row[1];
-            BigDecimal balance = (BigDecimal) row[2];
+            // SUM over a CASE expression may come back as any Number subtype depending on the dialect
+            BigDecimal balance = new BigDecimal(row[2].toString());
 
             // If balance > 0, I owe them. If < 0, they owe me.
             if (balance.compareTo(BigDecimal.ZERO) > 0) {
