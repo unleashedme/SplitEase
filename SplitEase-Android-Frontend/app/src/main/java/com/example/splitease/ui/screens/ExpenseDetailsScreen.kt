@@ -84,7 +84,6 @@ fun ExpenseDetailsScreen(
                     ExpenseDetailCard(
                         onExpenseDeleteClicked = {
                             activityViewModel.deleteExpense(expenseId){
-                                activityViewModel.getActivity()
                                 navigateBack()
                             }
                         },

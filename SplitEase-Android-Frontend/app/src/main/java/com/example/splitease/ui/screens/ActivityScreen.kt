@@ -94,9 +94,6 @@ fun ActivityScreen(
 
     var showAddExpensePopUp by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        activityViewModel.getActivity()
-    }
     val activityUiState = activityViewModel.activityUiState
     var selectedFilter by remember { mutableStateOf(ExpenseFilter.ALL) }
 

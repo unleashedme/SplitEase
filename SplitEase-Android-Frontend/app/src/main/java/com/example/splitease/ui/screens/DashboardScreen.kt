@@ -285,9 +285,6 @@ fun DashboardScreen(
                 onCreateGroupClick = {
                     createGroupViewModel.createGroup {
                         showCreateGroupPopUp = false
-                        groupListViewModel.getGroupList()
-                        groupViewModel.getGroupScreenData()
-                        dashboardViewModel.getDashboardStat()
                         createGroupViewModel.resetUiState()
                     }
                 }
@@ -1258,10 +1255,6 @@ fun AddExpensePopUp(
                 onClick = {
                     addExpenseViewModel.addExpense(selectedGroup?.groupId?:""){
                         onClose()
-                        groupViewModel.getGroupScreenData()
-                        dashboardViewModel.getDashboardStat()
-                        settlementViewModel.loadSettlements()
-                        activityViewModel.getActivity()
                         addExpenseViewModel.resetUiState()
                     }
                 },
@@ -1610,10 +1603,6 @@ fun SettleUpPopUp(
                         note = note
                     ) {
                         onClose()
-                        groupViewModel.getGroupScreenData()
-                        dashboardViewModel.getDashboardStat()
-                        settlementViewModel.loadSettlements()
-                        activityViewModel.getActivity()
                     }
                 },
                 shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),

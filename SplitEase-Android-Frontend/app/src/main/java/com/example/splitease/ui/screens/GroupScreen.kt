@@ -77,9 +77,6 @@ fun GroupScreen(
 ){
     var showCreateGroupPopUp by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        groupViewModel.getGroupScreenData()
-    }
 
     val groupUiData = groupViewModel.groupUiState
 
@@ -252,10 +249,6 @@ fun GroupScreen(
                 onCreateGroupClick = {
                     createGroupViewModel.createGroup {
                         showCreateGroupPopUp = false
-                        groupViewModel.getGroupScreenData()
-                        activityViewModel.getActivity()
-                        dashboardViewModel.getDashboardStat()
-                        groupListViewModel.getGroupList()
                         createGroupViewModel.resetUiState()
                     }
                 }

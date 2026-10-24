@@ -91,7 +91,6 @@ fun GroupDetailsScreen(
                     onDeleteGroupClicked = {
                         groupViewModel.deleteGroup(groupId){
                             navigateBack()
-                            groupViewModel.getGroupScreenData()
 
                         }
                     },

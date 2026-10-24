@@ -11,6 +11,7 @@ import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.AP
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.example.splitease.data.AppDataStore
 import com.example.splitease.data.Repository
 import com.example.splitease.ui.AppApplication
 import com.example.splitease.ui.RequestToasts
@@ -30,25 +31,17 @@ enum class GroupSortOrder(val displayName: String) {
     HIGHEST_EXPENSES("Highest Expenses")
 }
 
-class GroupViewModel(private val repository: Repository): ViewModel(){
+class GroupViewModel(
+    private val repository: Repository,
+    private val dataStore: AppDataStore
+): ViewModel(){
 
-    var groupUiState by mutableStateOf<GroupScreenDataResponse?>(null)
-        private set
+    // Cached app-wide; see AppDataStore
+    val groupUiState: GroupScreenDataResponse?
+        get() = dataStore.groupScreenData
 
     init {
-        getGroupScreenData()
-    }
-
-    fun getGroupScreenData(){
-        viewModelScope.launch {
-            try{
-                groupUiState = repository.getGroupScreenData()
-                println("Group: getGroupScreenData success")
-            }catch (e: Exception){
-                println("Group: exception = ${e::class.java} ${e.message}")
-                RequestToasts.failure("Couldn't load groups", e)
-            }
-        }
+        dataStore.loadIfNeeded()
     }
 
     private val _groupSortOrder = MutableStateFlow(GroupSortOrder.MOST_RECENT)
@@ -89,6 +82,7 @@ class GroupViewModel(private val repository: Repository): ViewModel(){
                 }
                 println("GroupDelete: deletingGroupData success")
                 RequestToasts.success("Group deleted")
+                dataStore.refresh()
                 onSuccess()
             }catch (e: Exception){
                 println("GroupDelete: exception = ${e::class.java} ${e.message}")
@@ -102,7 +96,7 @@ class GroupViewModel(private val repository: Repository): ViewModel(){
             initializer {
                 val application = (this[APPLICATION_KEY] as AppApplication)
                 val repository = application.container.repository
-                GroupViewModel(repository = repository)
+                GroupViewModel(repository = repository, dataStore = application.container.dataStore)
             }
         }
     }

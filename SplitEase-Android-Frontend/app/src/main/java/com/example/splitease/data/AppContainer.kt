@@ -12,6 +12,7 @@ import retrofit2.converter.moshi.MoshiConverterFactory
 
 interface AppContainer{
     val repository: Repository
+    val dataStore: AppDataStore
 }
 
 class DefaultAppContainer(authStore: AuthStore): AppContainer {
@@ -39,5 +40,9 @@ class DefaultAppContainer(authStore: AuthStore): AppContainer {
 
     override val repository: Repository by lazy{
         NetworkRepository(retrofitService)
+    }
+
+    override val dataStore: AppDataStore by lazy{
+        AppDataStore(repository)
     }
 }

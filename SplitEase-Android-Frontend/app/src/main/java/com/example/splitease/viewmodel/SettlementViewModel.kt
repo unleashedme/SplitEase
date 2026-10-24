@@ -9,6 +9,7 @@ import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.AP
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.example.splitease.data.AppDataStore
 import com.example.splitease.data.Repository
 import com.example.splitease.dto.SettlementDto
 import com.example.splitease.ui.AppApplication
@@ -16,25 +17,17 @@ import com.example.splitease.ui.RequestToasts
 import com.example.splitease.ui.model.SettlementSummary
 import kotlinx.coroutines.launch
 
-class SettlementViewModel(private val repository: Repository): ViewModel(){
+class SettlementViewModel(
+    private val repository: Repository,
+    private val dataStore: AppDataStore
+): ViewModel(){
 
-    var settlements by mutableStateOf<List<SettlementSummary>>(emptyList())
-        private set
+    // Cached app-wide; see AppDataStore
+    val settlements: List<SettlementSummary>
+        get() = dataStore.payables
 
     init {
-        loadSettlements()
-    }
-    fun loadSettlements() {
-        viewModelScope.launch {
-            try{
-                settlements = repository.getMyPayables()
-                println("SettlementList: loadSettlements success")
-            }
-            catch(e : Exception){
-                println("SettlementList: exception = ${e::class.java} ${e.message}")
-                RequestToasts.failure("Couldn't load what you owe", e)
-            }
-        }
+        dataStore.loadIfNeeded()
     }
 
     fun recordPayment(toUserId: String, amount: Double, note: String = "", onSuccess:() -> Unit){
@@ -48,6 +41,7 @@ class SettlementViewModel(private val repository: Repository): ViewModel(){
                     )
                 )
                 RequestToasts.success("Payment of ₹%.2f recorded".format(amount))
+                dataStore.refresh()
                 onSuccess()
                 println("Settlement: recordPayment success")
             }catch (e: Exception){
@@ -62,7 +56,7 @@ class SettlementViewModel(private val repository: Repository): ViewModel(){
             initializer {
                 val application = (this[APPLICATION_KEY] as AppApplication)
                 val repository = application.container.repository
-                SettlementViewModel(repository = repository)
+                SettlementViewModel(repository = repository, dataStore = application.container.dataStore)
             }
         }
     }

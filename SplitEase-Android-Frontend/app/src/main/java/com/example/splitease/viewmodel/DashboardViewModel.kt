@@ -9,39 +9,28 @@ import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.AP
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.example.splitease.data.AppDataStore
 import com.example.splitease.data.Repository
 import com.example.splitease.ui.AppApplication
 import com.example.splitease.ui.RequestToasts
 import com.example.splitease.ui.model.DashboardStatResponse
 import kotlinx.coroutines.launch
 
-class DashboardViewModel(private val repository: Repository): ViewModel() {
+class DashboardViewModel(private val dataStore: AppDataStore): ViewModel() {
 
-    var dashboardUiState by mutableStateOf<DashboardStatResponse?>(null)
-        private set
+    // Cached app-wide; see AppDataStore
+    val dashboardUiState: DashboardStatResponse?
+        get() = dataStore.dashboardStats
 
     init {
-        getDashboardStat()
-    }
-
-    fun getDashboardStat(){
-        viewModelScope.launch {
-            try {
-                dashboardUiState = repository.getDashboardStat()
-                println("Dashboard: getDashboardStat success")
-            }catch (e: Exception){
-                println("Dashboard: exception = ${e::class.java} ${e.message}")
-                RequestToasts.failure("Couldn't load dashboard", e)
-            }
-        }
+        dataStore.loadIfNeeded()
     }
 
     companion object{
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val application = (this[APPLICATION_KEY] as AppApplication)
-                val repository = application.container.repository
-                DashboardViewModel(repository = repository)
+                DashboardViewModel(dataStore = application.container.dataStore)
             }
         }
     }

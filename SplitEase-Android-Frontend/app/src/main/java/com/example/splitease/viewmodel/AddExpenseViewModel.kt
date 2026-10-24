@@ -9,6 +9,7 @@ import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.AP
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.example.splitease.data.AppDataStore
 import com.example.splitease.data.Repository
 import com.example.splitease.dto.SplitEntryDto
 import com.example.splitease.ui.AppApplication
@@ -17,7 +18,10 @@ import com.example.splitease.ui.model.GroupMemberDto
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
-class AddExpenseViewModel(private val repository : Repository) : ViewModel() {
+class AddExpenseViewModel(
+    private val repository : Repository,
+    private val dataStore: AppDataStore
+) : ViewModel() {
 
     var addExpenseUiState by mutableStateOf(AddExpenseUiState())
         private set
@@ -93,6 +97,7 @@ class AddExpenseViewModel(private val repository : Repository) : ViewModel() {
                 }
                 println("Add Expense called is Successfully")
                 RequestToasts.success("Expense \"${state.description}\" added")
+                dataStore.refresh()
                 onSuccess()
             }catch (e: Exception){
                 println("ADD EXPENSE: exception = ${e::class.java} ${e.message}")
@@ -106,7 +111,7 @@ class AddExpenseViewModel(private val repository : Repository) : ViewModel() {
             initializer {
                 val application = (this[APPLICATION_KEY] as AppApplication)
                 val repository = application.container.repository
-                AddExpenseViewModel(repository = repository)
+                AddExpenseViewModel(repository = repository, dataStore = application.container.dataStore)
             }
         }
     }
