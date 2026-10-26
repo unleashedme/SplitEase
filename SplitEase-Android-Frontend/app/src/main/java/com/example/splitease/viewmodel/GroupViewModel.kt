@@ -50,6 +50,9 @@ class GroupViewModel(
     // Pull to refresh
     fun refresh() = dataStore.refresh()
 
+    // Any group member can view an expense's bill photo
+    fun receiptUrl(expenseId: String, thumbnail: Boolean): String = repository.receiptUrl(expenseId, thumbnail)
+
     private val _groupSortOrder = MutableStateFlow(GroupSortOrder.MOST_RECENT)
     val groupSortOrder = _groupSortOrder.asStateFlow()
     private val _groupUiData = MutableStateFlow<GroupScreenDataResponse?>(null)

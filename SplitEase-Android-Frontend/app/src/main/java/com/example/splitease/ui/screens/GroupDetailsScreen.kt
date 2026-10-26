@@ -1,7 +1,9 @@
 package com.example.splitease.ui.screens
 
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.material3.HorizontalDivider
+import com.example.splitease.ui.rupees
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -102,8 +104,8 @@ fun GroupDetailsScreen(
                 StatCard(
                     cardHeading = "Total Expense",
                     cardIcon = R.drawable.rupee_96,
-                    cardData = "₹ ${groupDetail?.totalGroupExpense}",
-                    cardDescription = "₹ ${groupDetail?.userShare} per person",
+                    cardData = rupees(groupDetail?.totalGroupExpense ?: 0.0),
+                    cardDescription = "Your share ${rupees(groupDetail?.userShare ?: 0.0)}",
                     modifier = Modifier
                         .padding(dimensionResource(R.dimen.smallPadding))
                 )
@@ -133,6 +135,7 @@ fun GroupDetailsScreen(
                     GroupDetailFilter.EXPENSES -> {
                         GroupExpensesList(
                             expenseList = groupDetail?.expenses?:emptyList(),
+                            receiptUrl = groupViewModel::receiptUrl,
                             modifier = Modifier
                                 .padding(dimensionResource(R.dimen.smallPadding))
                         )
@@ -312,8 +315,10 @@ fun GroupDetailsCard(
 @Composable
 fun GroupExpensesList(
     expenseList: List<ExpenseDTO>,
+    receiptUrl: (expenseId: String, thumbnail: Boolean) -> String,
     modifier: Modifier = Modifier
 ){
+    var billToShow by remember { mutableStateOf<String?>(null) }
 
     Card(
         shape = RoundedCornerShape(20.dp),
@@ -324,8 +329,7 @@ fun GroupExpensesList(
     ){
         Column(
             modifier = Modifier.padding(dimensionResource(R.dimen.largePadding)),
-            horizontalAlignment = Alignment.Start,
-            verticalArrangement = Arrangement.SpaceBetween
+            horizontalAlignment = Alignment.Start
         ) {
             Text(
                 text = "All Expenses",
@@ -340,25 +344,39 @@ fun GroupExpensesList(
                 color = Color.Gray
             )
             Spacer(modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding)))
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(dimensionResource(R.dimen.largePadding)),
-                verticalArrangement = Arrangement
-                    .spacedBy(dimensionResource(R.dimen.smallPadding))
-            ) {
-                expenseList.forEach { expense ->
-                    GroupExpensesCard(
-                        expenseName = expense.description,
-                        date = expense.date,
-                        amount = expense.amount,
-                        splitLabel = expense.splitPerPerson?.let { "₹$it per person" }
-                            ?: "Custom split · your share ₹${"%.2f".format(expense.userShare)}",
-                        payerName = if(!expense.userPaid) expense.payerName else "You"
-                    )
+            if (expenseList.isEmpty()) {
+                Text(
+                    text = "No expenses yet.",
+                    color = Color.Gray,
+                    modifier = Modifier.padding(4.dp)
+                )
+            }
+            // Rows separated by dividers rather than a card per expense, so the list stays light
+            expenseList.forEachIndexed { index, expense ->
+                if (index > 0) {
+                    HorizontalDivider(thickness = 0.5.dp, color = Color(0xFFE0E0E0))
                 }
+                GroupExpensesCard(
+                    expenseName = expense.description,
+                    date = expense.date,
+                    amount = expense.amount,
+                    splitLabel = expense.splitPerPerson?.let { "${rupees(it)} each" }
+                        ?: "Your share ${rupees(expense.userShare)}",
+                    payerName = if(!expense.userPaid) expense.payerName else "You",
+                    onViewBill = expense.expenseId
+                        ?.takeIf { expense.hasReceipt }
+                        ?.let { id -> { billToShow = id } }
+                )
             }
         }
+    }
+
+    billToShow?.let { id ->
+        FullScreenBillDialog(
+            url = receiptUrl(id, false),
+            cacheVersion = 0,
+            onDismiss = { billToShow = null }
+        )
     }
 }
 
@@ -369,81 +387,62 @@ fun GroupExpensesCard(
     date: String,
     amount: Double,
     splitLabel: String,
-    payerName: String
+    payerName: String,
+    onViewBill: (() -> Unit)? = null // null when the expense has no bill photo
 ){
-    Card(
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+    Row(
         modifier = modifier
-            .padding(4.dp)
-            .fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        elevation = CardDefaults.elevatedCardElevation(),
-        border = BorderStroke(0.2.dp, Color.Gray)
-    ){
-        Row(
-            modifier = Modifier
-                .padding(8.dp)
-                .fillMaxWidth(),
-            horizontalArrangement = Arrangement.Start,
-            verticalAlignment = Alignment.Top
+            .fillMaxWidth()
+            .padding(vertical = 12.dp, horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        UserAvatar(
+            name = expenseName,
+            modifier = Modifier.size(40.dp)
+        )
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
-            Image(
-                painter = painterResource(R.drawable.splitease_logo_without_bottom_tag),
-                contentDescription = "Logo",
-                modifier = Modifier.size(60.dp)
+            Text(
+                text = expenseName,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
-            Column(
-                modifier = Modifier
-                    .padding(horizontal = 8.dp),
-                horizontalAlignment = Alignment.Start,
-                verticalArrangement = Arrangement.SpaceBetween
-            ) {
+            Text(
+                text = "Paid by $payerName · ${formatIsoDate(date)}",
+                fontSize = 13.sp,
+                color = Color.Gray,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (onViewBill != null) {
                 Text(
-                    text = expenseName,
-                    fontSize = 20.sp
-                )
-                Spacer(modifier = Modifier.padding(4.dp))
-                Row(
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Bottom
-                ) {
-                    Text(
-                        text = "Paid by $payerName",
-                        modifier = Modifier.padding(start = 4.dp),
-                        color = Color.Gray
-                    )
-                    Spacer(modifier = Modifier.padding(horizontal = 4.dp))
-                    Icon(
-                        painter = painterResource(R.drawable.calendar_24),
-                        contentDescription = "Calendar Icon",
-                        modifier = Modifier.size(16.dp),
-                        tint = Color.Gray
-                    )
-                    Text(
-                        text = formatIsoDate(date),
-                        modifier = Modifier.padding(start = 4.dp),
-                        color = Color.Gray
-                    )
-                }
-                Spacer(modifier = Modifier.padding(4.dp))
-                Row(
+                    text = "View bill",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier
-                        .fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "₹$amount",
-                        fontSize = 20.sp
-                    )
-                    Spacer(modifier = Modifier.padding(4.dp))
-                    Text(
-                        text = splitLabel,
-                        fontSize = 16.sp,
-                        color = Color.Gray
-                    )
-                }
+                        .clip(RoundedCornerShape(4.dp))
+                        .clickable(onClick = onViewBill)
+                        .padding(vertical = 2.dp)
+                )
             }
+        }
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                text = rupees(amount),
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = splitLabel,
+                fontSize = 12.sp,
+                color = Color.Gray
+            )
         }
     }
 }

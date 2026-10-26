@@ -33,6 +33,9 @@ public class GroupService {
     private ExpenseSplitRepo expenseSplitRepo;
 
     @Autowired
+    private ExpenseReceiptRepo expenseReceiptRepo;
+
+    @Autowired
     private NotificationService notificationService;
 
     public UUID createGroup(CreateGroupRequest request, String creatorEmail){
@@ -121,6 +124,9 @@ public class GroupService {
                     .stream().map(ExpenseSplits::getShareAmount)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
+            Set<UUID> expensesWithReceipt = groupExpenses.isEmpty() ? Set.of()
+                    : expenseReceiptRepo.findExpenseIdsWithReceipt(groupExpenses.stream().map(Expenses::getId).toList());
+
             // Map Expenses
             List<ExpenseDTO> expenseDTOs = groupExpenses.stream().map(e -> {
                 List<ExpenseSplits> splits = e.getSplits() == null ? List.of() : e.getSplits();
@@ -145,7 +151,9 @@ public class GroupService {
                         splitPerPerson,
                         splitType.name(),
                         myShare,
-                        splits.stream().map(s -> new ExpenseShareDTO(s.getUser().getName(), s.getShareAmount())).toList()
+                        splits.stream().map(s -> new ExpenseShareDTO(s.getUser().getName(), s.getShareAmount())).toList(),
+                        e.getId(),
+                        expensesWithReceipt.contains(e.getId())
                 );
             }).toList();
 

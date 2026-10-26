@@ -39,7 +39,7 @@ class DefaultAppContainer(authStore: AuthStore): AppContainer {
     }
 
     override val repository: Repository by lazy{
-        NetworkRepository(retrofitService)
+        NetworkRepository(retrofitService, retrofit.baseUrl())
     }
 
     override val dataStore: AppDataStore by lazy{

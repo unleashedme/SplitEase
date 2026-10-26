@@ -4,6 +4,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.nio.file.AccessDeniedException;
@@ -23,5 +24,11 @@ public class ApiExceptionHandler {
     public ResponseEntity<Map<String, String>> handleResponseStatus(ResponseStatusException e) {
         String reason = e.getReason() == null ? "" : e.getReason();
         return ResponseEntity.status(e.getStatusCode()).body(Map.of("message", reason));
+    }
+
+    // Rejected by the multipart limits in application.properties before reaching the controller
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<Map<String, String>> handleUploadTooLarge(MaxUploadSizeExceededException e) {
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(Map.of("message", "Bill photo must be 5 MB or smaller"));
     }
 }

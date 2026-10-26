@@ -1,5 +1,6 @@
 package com.example.splitease.ui.screens
 
+import com.example.splitease.ui.rupees
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -344,7 +345,7 @@ fun ActivityStatsList(
             StatCard(
                 cardHeading = "Total Amount",
                 cardIcon = R.drawable.rupee_96,
-                cardData = "₹ $totalExpense",
+                cardData = rupees(totalExpense),
                 cardDescription = "Combined spending",
                 modifier = Modifier.weight(1f)
             )
@@ -582,11 +583,11 @@ fun ExpenseCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "₹ ${expense.amount}",
+                        text = rupees(expense.amount),
                         fontSize = 20.sp
                     )
                     Text(
-                        text = "Your share: ₹${expense.userShare}",
+                        text = "Your share: ${rupees(expense.userShare)}",
                         fontSize = 12.sp,
                         color = Color.Gray
                     )

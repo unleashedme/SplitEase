@@ -2,6 +2,7 @@ package com.example.splitease.controller;
 
 
 import com.example.splitease.requestAndResponse.AddExpenseRequest;
+import com.example.splitease.requestAndResponse.AddExpenseResponse;
 import com.example.splitease.service.ActivityService;
 import com.example.splitease.service.ExpenseService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,8 +26,8 @@ public class ExpenseController {
             @RequestBody AddExpenseRequest request,
             Principal principal
     ) {
-        expenseService.addExpense(request, principal.getName());
-        return ResponseEntity.ok().build();
+        UUID expenseId = expenseService.addExpense(request, principal.getName());
+        return ResponseEntity.ok(new AddExpenseResponse(expenseId));
     }
 
     @DeleteMapping("/expense/{id}")

@@ -30,6 +30,7 @@ class GroupServiceTest {
     @Mock private GroupMemberRepo groupMemberRepo;
     @Mock private ExpenseRepo expenseRepo;
     @Mock private ExpenseSplitRepo expenseSplitRepo;
+    @Mock private ExpenseReceiptRepo expenseReceiptRepo;
     @Mock private NotificationService notificationService;
 
     @InjectMocks

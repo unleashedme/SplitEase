@@ -37,7 +37,8 @@ class ActivityAndDashboardControllerTest {
         when(activityService.getUserActivity("alice@test.com")).thenReturn(new ActivityDashboardResponse(
                 1, new BigDecimal("50.00"), 1, 0,
                 List.of(new ExpenseActivityDTO(id, "Dinner", "2026-01-01T00:00:00Z", true, "Trip",
-                        new BigDecimal("100.00"), new BigDecimal("50.00"), false, null))));
+                        new BigDecimal("100.00"), new BigDecimal("50.00"), false, null, true,
+                        "Alice", "EQUAL", List.of()))));
 
         mvc(activityController).perform(get("/activity").principal(ALICE))
                 .andExpect(status().isOk())
@@ -45,7 +46,8 @@ class ActivityAndDashboardControllerTest {
                 .andExpect(jsonPath("$.totalSpentCombined").value(50.00))
                 .andExpect(jsonPath("$.expenseHistory[0].expenseId").value(id.toString()))
                 .andExpect(jsonPath("$.expenseHistory[0].description").value("Dinner"))
-                .andExpect(jsonPath("$.expenseHistory[0].groupName").value("Trip"));
+                .andExpect(jsonPath("$.expenseHistory[0].groupName").value("Trip"))
+                .andExpect(jsonPath("$.expenseHistory[0].hasReceipt").value(true));
     }
 
     @Test

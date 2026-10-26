@@ -1,5 +1,6 @@
 package com.example.splitease.viewmodel
 
+import com.example.splitease.ui.rupees
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -26,6 +27,10 @@ class SettlementViewModel(
     val settlements: List<SettlementSummary>
         get() = dataStore.payables
 
+    // An empty list while this is true means "not loaded yet", not "nothing to settle"
+    val isRefreshing: Boolean
+        get() = dataStore.isRefreshing
+
     init {
         dataStore.loadIfNeeded()
     }
@@ -40,7 +45,7 @@ class SettlementViewModel(
                         note = note,
                     )
                 )
-                RequestToasts.success("Payment of ₹%.2f recorded".format(amount))
+                RequestToasts.success("Payment of ${rupees(amount)} recorded")
                 dataStore.refresh()
                 onSuccess()
                 println("Settlement: recordPayment success")

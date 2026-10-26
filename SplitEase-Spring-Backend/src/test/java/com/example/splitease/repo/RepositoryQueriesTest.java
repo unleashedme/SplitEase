@@ -1,6 +1,7 @@
 package com.example.splitease.repo;
 
 import com.example.splitease.models.*;
+import com.example.splitease.requestAndResponse.ReceiptImage;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -9,6 +10,7 @@ import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,6 +28,7 @@ class RepositoryQueriesTest {
     @Autowired private GroupMemberRepo groupMemberRepo;
     @Autowired private ExpenseRepo expenseRepo;
     @Autowired private ExpenseSplitRepo expenseSplitRepo;
+    @Autowired private ExpenseReceiptRepo expenseReceiptRepo;
 
     private Users alice;
     private Users bob;
@@ -127,7 +130,9 @@ class RepositoryQueriesTest {
         assertThat(aliceActivity).hasSize(1);
         assertThat(aliceActivity.get(0).getSplits()).hasSize(3);
 
-        assertThat(expenseRepo.findAllActivityForUser("carol@test.com")).hasSize(2);
+        // Carol isn't the payer of either, but every split must still be loaded
+        assertThat(expenseRepo.findAllActivityForUser("carol@test.com")).hasSize(2)
+                .allSatisfy(e -> assertThat(e.getSplits()).hasSize(e.getAmount().intValue() == 90 ? 3 : 2));
         assertThat(expenseRepo.findAllActivityForUser("out@test.com")).isEmpty();
     }
 
@@ -184,6 +189,57 @@ class RepositoryQueriesTest {
         flushAndClear();
 
         assertThat(expenseSplitRepo.findAll()).isEmpty();
+    }
+
+    private void attachReceipt(Expenses e, byte[] data, byte[] thumbnail) {
+        ExpenseReceipts r = new ExpenseReceipts();
+        r.setExpense(e);
+        r.setContentType("image/png");
+        r.setData(data);
+        r.setThumbnail(thumbnail);
+        r.setSizeBytes(data.length);
+        r.setCreatedAt(Instant.now());
+        expenseReceiptRepo.save(r);
+    }
+
+    @Test
+    void receiptQueriesReturnOnlyTheRequestedVersion() {
+        Expenses withBill = expense(alice, "90", "30", alice, bob, carol);
+        Expenses withoutBill = expense(bob, "20", "10", bob, carol);
+        byte[] full = new byte[200_000]; // bigger than a default varbinary column
+        full[0] = 1;
+        attachReceipt(withBill, full, new byte[]{9, 9});
+        flushAndClear();
+
+        assertThat(expenseReceiptRepo.findExpenseIdsWithReceipt(List.of(withBill.getId(), withoutBill.getId())))
+                .containsExactly(withBill.getId());
+
+        ReceiptImage fullImage = expenseReceiptRepo.findFullImage(withBill.getId()).orElseThrow();
+        assertThat(fullImage.contentType()).isEqualTo("image/png");
+        assertThat(fullImage.bytes()).isEqualTo(full);
+
+        ReceiptImage thumb = expenseReceiptRepo.findThumbnail(withBill.getId()).orElseThrow();
+        assertThat(thumb.contentType()).isEqualTo("image/jpeg");
+        assertThat(thumb.bytes()).containsExactly(9, 9);
+
+        assertThat(expenseReceiptRepo.findFullImage(withoutBill.getId())).isEmpty();
+    }
+
+    @Test
+    void deletingExpenseOrGroupRemovesItsReceipt() {
+        Expenses first = expense(alice, "90", "30", alice, bob, carol);
+        attachReceipt(first, new byte[]{1}, new byte[]{1});
+        Expenses second = expense(bob, "20", "10", bob, carol);
+        attachReceipt(second, new byte[]{2}, new byte[]{2});
+        flushAndClear();
+
+        expenseRepo.delete(expenseRepo.findById(first.getId()).orElseThrow());
+        flushAndClear();
+        assertThat(expenseReceiptRepo.findAll()).extracting(ExpenseReceipts::getExpenseId).containsExactly(second.getId());
+
+        groupRepo.delete(groupRepo.findById(trip.getId()).orElseThrow());
+        flushAndClear();
+        assertThat(expenseReceiptRepo.findAll()).isEmpty();
     }
 
     private Map<String, BigDecimal> balances(Users user) {
