@@ -1,6 +1,6 @@
 # SplitEase: An Expense Splitting and Tracking Application
 
-SplitEase is a full-stack Android application for managing and splitting group expenses. Users create groups, add shared expenses (split equally or in custom ways), attach a photo of the bill, and settle up with one payment per person based on net balances across all their groups. The app emphasizes secure authentication, accurate balance calculation, and real-time updates.
+SplitEase is a full-stack Android application for managing and splitting group expenses. Users create groups, add shared expenses (split equally or in custom ways), attach a photo of the bill, and settle up in as few payments as possible thanks to greedy debt simplification. The app emphasizes secure authentication, accurate balance calculation, and real-time updates.
 
 ## App Screenshots
 <p align="center">
@@ -20,18 +20,24 @@ SplitEase is a full-stack Android application for managing and splitting group e
    <img src="screenshots/profileScreen.jpeg" width="220"/>
 </p>
 
+<p align="center">
+  <img src="screenshots/createNewGroupDialog.jpeg" width="220"/>
+  <img src="screenshots/addNewExpenseDialog.jpeg" width="220"/>
+  <img src="screenshots/settlementDialog.jpeg" width="220"/>
+</p>
+
 
 
 ## Key Features
 - **Collaborative Expense Management**: Full-stack system for group expense tracking and ledger management using Spring Boot and PostgreSQL.
 - **Flexible Splits**: Split an expense equally between everyone or chosen members, or by exact amounts, percentages or shares. Shares are always rounded so they add up exactly to the expense amount.
 - **Bill Photos with On-Device Amount Reading**: Attach a photo of the bill (camera or gallery) when adding an expense, or later from the expense's page. Google ML Kit reads the bill **on the phone, offline**, and a custom parser picks out the total (Grand Total / Net Amount over Subtotal, GST, Cash, Change…) to fill in the amount for the user to confirm. Everyone in the group can view the bill full screen with pinch to zoom; only the payer can attach, replace or remove it.
-- **Settlement Engine**: Computes net peer-to-peer balances across all of a user's groups, so each pair of people settles with a single payment.
+- **Debt Simplification**: A greedy algorithm settles each group in at most n − 1 payments for n members and cuts out middlemen: if Bob owes Alice and Carol owes Bob, Carol pays Alice directly. What two people owe each other across their shared groups is netted into a single payment, and nobody is asked to pay someone outside their groups.
 - **Clear Expense Details**: Every member's share, who paid, and who has settled, with all amounts shown to 2 decimal places.
 - **Security Framework**: JWT (JSON Web Tokens) for stateless authentication and BCrypt hashing for passwords. Bill photos are only served to members of the expense's group.
 - **Modern Android Architecture**: Reactive UI built with Jetpack Compose following MVVM, with an app-wide data cache so screens don't refetch on every tab switch, plus pull to refresh.
 - **Real-time Event Notifications**: Firebase Cloud Messaging (FCM) push notifications for new groups and expenses.
-- **Tested**: JUnit suites on both sides: controller, service and repository tests plus end-to-end flows on the backend, and ViewModel, data cache and bill parser tests on Android.
+- **Tested**: JUnit suites on both sides: controller, service and repository tests, randomized tests of the debt simplifier and end-to-end flows on the backend, and ViewModel, data cache and bill parser tests on Android.
 
 
 ## Tech Stack
@@ -54,6 +60,14 @@ SplitEase is a full-stack Android application for managing and splitting group e
 - JPA / Hibernate
 - Firebase Admin SDK (push notifications)
 - JUnit 5, Mockito & H2 (tests)
+
+## How Debt Simplification Works
+1. Each member's net balance in a group is worked out from the group's open expense splits and the payments recorded in it (positive = owed money, negative = owes money).
+2. `DebtSimplifier` repeatedly has the member who owes the most pay the member who is owed the most, as much as one of them needs, until everyone is at zero. Every payment clears at least one person, so a group of n people never needs more than n − 1 payments.
+3. Each person's payments across all their groups are then netted per counterpart, so two people always settle with one payment, even if they share several groups.
+4. A recorded payment is stored per group. Once everyone in a group is square, its expenses are marked settled.
+
+For example, four friends who each paid for one dinner split four ways, plus one drink bought for a friend, have 13 debts between pairs but need only **one** payment.
 
 ## How Bill Reading Works
 1. The photo is decoded upright (using its EXIF orientation) at up to 2048 px and compressed to a JPEG of a few hundred KB for upload.
@@ -119,8 +133,8 @@ All endpoints except `/register` and `/login` require an `Authorization: Bearer 
 | GET | `/expense/{id}/receipt?size=thumb\|full` | View the bill photo (group members) |
 | DELETE | `/expense/{id}/receipt` | Remove the bill photo (payer only) |
 | GET | `/activity` | Expense history with each member's share |
-| GET | `/settlements/payables` | Who the user owes, netted across groups |
-| POST | `/settlements` | Record a payment |
+| GET | `/settlements/payables` | Who the user should pay, after simplifying debts |
+| POST | `/settlements` | Record a payment (rejected with 409 if balances changed since they were loaded) |
 
 ## Project Structure
 ```bash
@@ -136,7 +150,7 @@ SplitEase/
 ├── SplitEase-Spring-Backend/        # Spring Boot backend (src/main/java/com/example/splitease/)
 │   ├── config/                      # Security, JWT filter, Firebase
 │   ├── controller/                  # REST controllers
-│   ├── service/                     # Business logic (expenses, settlements, receipts…)
+│   ├── service/                     # Business logic (expenses, debt simplification, receipts…)
 │   ├── repo/                        # JPA repositories
 │   ├── models/                      # Entities
 │   └── requestAndResponse/          # Request and response DTOs
