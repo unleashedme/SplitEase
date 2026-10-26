@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.io.IOException
 
 sealed class ProfileState{
     object LoggedIn: ProfileState()
@@ -49,8 +50,17 @@ class ProfileViewModel(private val authStore: AuthStore,
 
     fun logOut(){
         viewModelScope.launch(Dispatchers.IO) {
+            // First, since deleting cached photos can free the space needed to save the logged-out state
+            application.clearImageCache()
+            try {
+                authStore.clear()
+            } catch (e: IOException) {
+                // Seen when the phone's storage is completely full; without this the app crashed
+                Log.e("ProfileVM", "Logout failed: ${e.message}")
+                RequestToasts.failure("Couldn't log out: the phone's storage is full. Free up some space and try again.")
+                return@launch
+            }
             profileState = ProfileState.LoggedOut
-            authStore.clear()
             application.resetContainer()
             _navigateToLoginScreen.emit(Unit)
         }
