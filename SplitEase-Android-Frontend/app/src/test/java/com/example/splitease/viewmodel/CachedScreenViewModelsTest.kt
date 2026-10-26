@@ -1,6 +1,7 @@
 package com.example.splitease.viewmodel
 
 import com.example.splitease.data.AppDataStore
+import com.example.splitease.testutil.FakeBillScanner
 import com.example.splitease.testutil.FakeRepository
 import com.example.splitease.testutil.Fixtures
 import com.example.splitease.testutil.MainDispatcherRule
@@ -46,7 +47,7 @@ class CachedScreenViewModelsTest {
         repeat(3) {
             DashboardViewModel(store)
             GroupViewModel(repository, store)
-            ActivityViewModel(repository, store)
+            ActivityViewModel(repository, store, FakeBillScanner())
             SettlementViewModel(repository, store)
             GroupListViewModel(store)
             advanceUntilIdle()
@@ -55,7 +56,7 @@ class CachedScreenViewModelsTest {
         assertEquals(1, repository.storeLoadCount())
         assertEquals(Fixtures.dashboardStat(), DashboardViewModel(store).dashboardUiState)
         assertEquals(Fixtures.groupScreenData(), GroupViewModel(repository, store).groupUiState)
-        assertEquals(Fixtures.activitySummary(), ActivityViewModel(repository, store).activityUiState)
+        assertEquals(Fixtures.activitySummary(), ActivityViewModel(repository, store, FakeBillScanner()).activityUiState)
         assertEquals(listOf(Fixtures.payable("Ravi", 40.0)), SettlementViewModel(repository, store).settlements)
         assertEquals(listOf(Fixtures.userGroup("Trip")), GroupListViewModel(store).groupListUiState.groups)
     }
@@ -77,7 +78,7 @@ class CachedScreenViewModelsTest {
         // The Groups and Activity screens refresh the same shared data
         GroupViewModel(repository, store).refresh()
         advanceUntilIdle()
-        ActivityViewModel(repository, store).refresh()
+        ActivityViewModel(repository, store, FakeBillScanner()).refresh()
         advanceUntilIdle()
         assertEquals(4, repository.storeLoadCount())
     }
@@ -132,7 +133,7 @@ class CachedScreenViewModelsTest {
         }
         store.loadIfNeeded()
         advanceUntilIdle()
-        val viewModel = ActivityViewModel(repository, store)
+        val viewModel = ActivityViewModel(repository, store, FakeBillScanner())
         val sorted = observe(viewModel.sortedExpenses)
         advanceUntilIdle()
 

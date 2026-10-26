@@ -1,6 +1,7 @@
 package com.example.splitease.viewmodel
 
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -10,6 +11,8 @@ import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.AP
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.example.splitease.bill.BillScanner
+import com.example.splitease.bill.MlKitBillScanner
 import com.example.splitease.data.AppDataStore
 import com.example.splitease.data.Repository
 import com.example.splitease.ui.AppApplication
@@ -34,7 +37,8 @@ enum class SortPreference(val displayName: String) {
 
 class ActivityViewModel(
     private val repository: Repository,
-    private val dataStore: AppDataStore
+    private val dataStore: AppDataStore,
+    private val billScanner: BillScanner
 ): ViewModel() {
 
     // Cached app-wide; see AppDataStore
@@ -101,12 +105,72 @@ class ActivityViewModel(
         }
     }
 
+    // Expense whose bill photo is being uploaded or removed, for showing progress
+    var billChangeInProgressFor by mutableStateOf<String?>(null)
+        private set
+
+    // Bumped when this user changes a bill, so the image cache doesn't show the old photo
+    var billRevision by mutableIntStateOf(0)
+        private set
+
+    fun receiptUrl(expenseId: String, thumbnail: Boolean): String = repository.receiptUrl(expenseId, thumbnail)
+
+    /** Attaches (or replaces) the bill photo of an expense the user paid for. */
+    fun attachBill(expenseId: String, uri: String){
+        if (billChangeInProgressFor != null) return
+        billChangeInProgressFor = expenseId
+        viewModelScope.launch {
+            try {
+                val bill = billScanner.scan(uri, readTotal = false)
+                val response = repository.uploadReceipt(expenseId, bill.jpeg)
+                if (!response.isSuccessful) {
+                    RequestToasts.failure("Couldn't upload bill photo", response)
+                    return@launch
+                }
+                RequestToasts.success("Bill photo attached")
+                billRevision++
+                dataStore.refresh()
+            } catch (e: Exception) {
+                println("Attach Bill: exception = ${e::class.java} ${e.message}")
+                RequestToasts.failure("Couldn't upload bill photo", e)
+            } finally {
+                billChangeInProgressFor = null
+            }
+        }
+    }
+
+    fun removeBill(expenseId: String){
+        if (billChangeInProgressFor != null) return
+        billChangeInProgressFor = expenseId
+        viewModelScope.launch {
+            try {
+                val response = repository.deleteReceipt(expenseId)
+                if (!response.isSuccessful) {
+                    RequestToasts.failure("Couldn't remove bill photo", response)
+                    return@launch
+                }
+                RequestToasts.success("Bill photo removed")
+                billRevision++
+                dataStore.refresh()
+            } catch (e: Exception) {
+                println("Remove Bill: exception = ${e::class.java} ${e.message}")
+                RequestToasts.failure("Couldn't remove bill photo", e)
+            } finally {
+                billChangeInProgressFor = null
+            }
+        }
+    }
+
     companion object{
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val application = (this[APPLICATION_KEY] as AppApplication)
                 val repository = application.container.repository
-                ActivityViewModel(repository = repository, dataStore = application.container.dataStore)
+                ActivityViewModel(
+                    repository = repository,
+                    dataStore = application.container.dataStore,
+                    billScanner = MlKitBillScanner(application)
+                )
             }
         }
     }

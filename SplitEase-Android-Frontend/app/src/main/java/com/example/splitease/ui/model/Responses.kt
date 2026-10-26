@@ -7,6 +7,10 @@ data class CreateGroupResponse(
     val message: String
 )
 
+data class AddExpenseResponse(
+    val expenseId: String
+)
+
 data class UserGroupResponse(
     val groupId: String,
     val groupName: String,
@@ -43,7 +47,19 @@ data class ActivityExpenseDto(
     val amount: Double,
     val userShare: Double,
     val isSettled: Boolean,
-    val owesToName: String?
+    val owesToName: String?,
+    val hasReceipt: Boolean = false,
+    val payerName: String? = null,
+    val splitType: String = "EQUAL",
+    val shares: List<SplitShareDto> = emptyList() // everyone in the split, payer first
+)
+
+data class SplitShareDto(
+    val name: String,
+    val amount: Double,
+    val isPayer: Boolean,
+    val isCurrentUser: Boolean,
+    val isSettled: Boolean
 )
 
 data class GroupScreenDataResponse(
@@ -75,7 +91,9 @@ data class ExpenseDTO(
     val splitPerPerson: Double?, // null when the expense wasn't split equally
     val splitType: String = "EQUAL",
     val userShare: Double = 0.0,
-    val shares: List<ExpenseShareDto> = emptyList()
+    val shares: List<ExpenseShareDto> = emptyList(),
+    val expenseId: String? = null,
+    val hasReceipt: Boolean = false
 )
 
 data class ExpenseShareDto(

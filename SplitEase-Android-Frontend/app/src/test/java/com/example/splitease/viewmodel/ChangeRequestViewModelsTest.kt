@@ -1,6 +1,7 @@
 package com.example.splitease.viewmodel
 
 import com.example.splitease.data.AppDataStore
+import com.example.splitease.testutil.FakeBillScanner
 import com.example.splitease.testutil.FakeRepository
 import com.example.splitease.testutil.Fixtures
 import com.example.splitease.testutil.MainDispatcherRule
@@ -115,7 +116,7 @@ class ChangeRequestViewModelsTest {
 
     @Test
     fun deleteExpenseSuccess() = runTest(mainRule.dispatcher) {
-        val viewModel = ActivityViewModel(repository, store)
+        val viewModel = ActivityViewModel(repository, store, FakeBillScanner())
         advanceUntilIdle()
 
         val outcome = perform { viewModel.deleteExpense("e-1", it) }
@@ -128,7 +129,7 @@ class ChangeRequestViewModelsTest {
     @Test
     fun deleteExpenseByNonPayerFails() = runTest(mainRule.dispatcher) {
         repository.deleteExpense = { Fixtures.errorResponse(403, "Unauthorized") }
-        val viewModel = ActivityViewModel(repository, store)
+        val viewModel = ActivityViewModel(repository, store, FakeBillScanner())
         advanceUntilIdle()
 
         val outcome = perform { viewModel.deleteExpense("e-1", it) }
@@ -136,6 +137,57 @@ class ChangeRequestViewModelsTest {
         assertFalse(outcome.succeeded)
         assertEquals(listOf("Couldn't delete expense: Unauthorized"), outcome.toasts)
         assertEquals(1, repository.storeLoadCount())
+    }
+
+    // Bill photo on an existing expense
+
+    @Test
+    fun attachBillUploadsPhotoWithoutReadingIt() = runTest(mainRule.dispatcher) {
+        val scanner = FakeBillScanner()
+        val viewModel = ActivityViewModel(repository, store, scanner)
+        advanceUntilIdle()
+        val toasts = recordToasts()
+
+        viewModel.attachBill("e-1", "content://bill")
+        advanceUntilIdle()
+
+        assertEquals(false, scanner.lastReadTotal)
+        assertEquals("e-1", repository.lastReceiptUpload!!.first)
+        assertEquals(listOf("Bill photo attached"), toasts)
+        assertEquals("image cache told the photo changed", 1, viewModel.billRevision)
+        assertEquals(null, viewModel.billChangeInProgressFor)
+        assertEquals(2, repository.storeLoadCount())
+    }
+
+    @Test
+    fun attachBillRejectedByServerShowsReason() = runTest(mainRule.dispatcher) {
+        repository.uploadReceipt = { _, _ -> Fixtures.errorResponse(403, "Only the person who paid can change the bill") }
+        val viewModel = ActivityViewModel(repository, store, FakeBillScanner())
+        advanceUntilIdle()
+        val toasts = recordToasts()
+
+        viewModel.attachBill("e-1", "content://bill")
+        advanceUntilIdle()
+
+        assertEquals(listOf("Couldn't upload bill photo: Only the person who paid can change the bill"), toasts)
+        assertEquals(0, viewModel.billRevision)
+        assertEquals(null, viewModel.billChangeInProgressFor)
+        assertEquals(1, repository.storeLoadCount())
+    }
+
+    @Test
+    fun removeBillSuccess() = runTest(mainRule.dispatcher) {
+        val viewModel = ActivityViewModel(repository, store, FakeBillScanner())
+        advanceUntilIdle()
+        val toasts = recordToasts()
+
+        viewModel.removeBill("e-1")
+        advanceUntilIdle()
+
+        assertEquals(1, repository.callCount("deleteReceipt"))
+        assertEquals(listOf("Bill photo removed"), toasts)
+        assertEquals(1, viewModel.billRevision)
+        assertEquals(2, repository.storeLoadCount())
     }
 
     // Settle up

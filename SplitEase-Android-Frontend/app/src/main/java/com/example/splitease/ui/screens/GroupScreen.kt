@@ -1,5 +1,6 @@
 package com.example.splitease.ui.screens
 
+import com.example.splitease.ui.rupees
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -306,7 +307,7 @@ fun GroupStatsList(
             StatCard(
                 cardHeading = "Total Expenses",
                 cardIcon = R.drawable.rupee_96,
-                cardData = "₹ ${groupUiData?.totalExpenses?:0.0}",
+                cardData = rupees(groupUiData?.totalExpenses ?: 0.0),
                 cardDescription = "Combined spending",
                 modifier = Modifier.weight(1f)
             )
@@ -431,7 +432,7 @@ fun GroupCard(
                     color = Color.Gray
                 )
                 Text(
-                    text = "₹ $totalExpense",
+                    text = rupees(totalExpense),
                     fontSize = 12.sp,
                     color = Color.Gray
                 )
@@ -447,7 +448,7 @@ fun GroupCard(
                     color = Color.Gray
                 )
                 Text(
-                    text = "₹ $userShare",
+                    text = rupees(userShare),
                     fontSize = 12.sp,
                     color = Color.Blue,
                 )

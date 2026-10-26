@@ -7,10 +7,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -119,5 +125,60 @@ class SpliteaseApplicationTests {
 				.andExpect(status().isOk());
 		mvc.perform(get("/myGroups").header("Authorization", ann))
 				.andExpect(jsonPath("$").isEmpty());
+	}
+
+	@Test
+	void billPhotoFlow() throws Exception {
+		register("Cat", "cat@flow.com", "200");
+		register("Dan", "dan@flow.com", "201");
+		register("Eve", "eve@flow.com", "202");
+		String cat = login("Cat", "cat@flow.com");
+		String dan = login("Dan", "dan@flow.com");
+		String eve = login("Eve", "eve@flow.com");
+
+		String created = mvc.perform(post("/group").header("Authorization", cat).contentType(MediaType.APPLICATION_JSON)
+						.content("{\"name\":\"Cafe\",\"members\":[\"dan@flow.com\"]}"))
+				.andReturn().getResponse().getContentAsString();
+		String groupId = JsonPath.read(created, "$.groupId");
+
+		String expense = mvc.perform(post("/expense").header("Authorization", cat).contentType(MediaType.APPLICATION_JSON)
+						.content("{\"groupId\":\"" + groupId + "\",\"amount\":450.00,\"description\":\"Coffee\"}"))
+				.andExpect(status().isOk())
+				.andReturn().getResponse().getContentAsString();
+		String expenseId = JsonPath.read(expense, "$.expenseId");
+
+		ByteArrayOutputStream png = new ByteArrayOutputStream();
+		ImageIO.write(new BufferedImage(600, 800, BufferedImage.TYPE_INT_RGB), "png", png);
+		MockMultipartFile file = new MockMultipartFile("file", "bill.png", "image/png", png.toByteArray());
+
+		// Only the payer can attach the bill
+		mvc.perform(multipart("/expense/{id}/receipt", expenseId).file(file).header("Authorization", dan))
+				.andExpect(status().isForbidden());
+		mvc.perform(multipart("/expense/{id}/receipt", expenseId).file(file).header("Authorization", cat))
+				.andExpect(status().isOk());
+
+		mvc.perform(get("/group").header("Authorization", dan))
+				.andExpect(jsonPath("$.groups[0].expenses[0].expenseId").value(expenseId))
+				.andExpect(jsonPath("$.groups[0].expenses[0].hasReceipt").value(true));
+		mvc.perform(get("/activity").header("Authorization", dan))
+				.andExpect(jsonPath("$.expenseHistory[0].hasReceipt").value(true));
+
+		// Everyone in the group can see it, people outside it can't
+		mvc.perform(get("/expense/{id}/receipt", expenseId).header("Authorization", dan))
+				.andExpect(status().isOk())
+				.andExpect(content().contentType("image/png"))
+				.andExpect(content().bytes(png.toByteArray()));
+		mvc.perform(get("/expense/{id}/receipt", expenseId).param("size", "thumb").header("Authorization", dan))
+				.andExpect(status().isOk())
+				.andExpect(content().contentType("image/jpeg"));
+		mvc.perform(get("/expense/{id}/receipt", expenseId).header("Authorization", eve))
+				.andExpect(status().isForbidden());
+
+		mvc.perform(delete("/expense/{id}/receipt", expenseId).header("Authorization", cat))
+				.andExpect(status().isOk());
+		mvc.perform(get("/expense/{id}/receipt", expenseId).header("Authorization", dan))
+				.andExpect(status().isNotFound());
+		mvc.perform(get("/activity").header("Authorization", dan))
+				.andExpect(jsonPath("$.expenseHistory[0].hasReceipt").value(false));
 	}
 }

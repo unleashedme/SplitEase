@@ -5,6 +5,7 @@ import com.example.splitease.dto.SettlementDto
 import com.example.splitease.dto.SplitEntryDto
 import com.example.splitease.dto.UserDto
 import com.example.splitease.ui.model.ActivitySummaryDto
+import com.example.splitease.ui.model.AddExpenseResponse
 import com.example.splitease.ui.model.CreateGroupResponse
 import com.example.splitease.ui.model.DashboardStatResponse
 import com.example.splitease.ui.model.GroupScreenDataResponse
@@ -36,11 +37,16 @@ class FakeRepository : Repository {
     var register: suspend (UserDto) -> Unit = {}
     var createGroup: suspend (String, List<String>) -> Response<CreateGroupResponse> =
         { _, _ -> Response.success(CreateGroupResponse("g-new", "created")) }
-    var addExpense: suspend (AddExpenseCall) -> Response<Unit> = { Response.success(Unit) }
+    var addExpense: suspend (AddExpenseCall) -> Response<AddExpenseResponse> =
+        { Response.success(AddExpenseResponse("e-new")) }
     var recordSettlement: suspend (SettlementDto) -> Unit = {}
     var deleteGroup: suspend (String) -> Response<Unit> = { Response.success(Unit) }
     var deleteExpense: suspend (String) -> Response<Unit> = { Response.success(Unit) }
     var updateFcmToken: suspend (String) -> Response<Unit> = { Response.success(Unit) }
+    var uploadReceipt: suspend (String, ByteArray) -> Response<Unit> = { _, _ -> Response.success(Unit) }
+    var deleteReceipt: suspend (String) -> Response<Unit> = { Response.success(Unit) }
+
+    var lastReceiptUpload: Pair<String, ByteArray>? = null
 
     var lastAddExpense: AddExpenseCall? = null
     var lastSettlement: SettlementDto? = null
@@ -67,7 +73,7 @@ class FakeRepository : Repository {
 
     override suspend fun addExpense(
         groupId: String, amount: Double, description: String, splitType: String, splits: List<SplitEntryDto>
-    ): Response<Unit> {
+    ): Response<AddExpenseResponse> {
         record("addExpense")
         val call = AddExpenseCall(groupId, amount, description, splitType, splits)
         lastAddExpense = call
@@ -109,6 +115,17 @@ class FakeRepository : Repository {
     override suspend fun updateFcmToken(token: String): Response<Unit> {
         record("updateFcmToken"); return updateFcmToken.invoke(token)
     }
+
+    override suspend fun uploadReceipt(expenseId: String, jpeg: ByteArray): Response<Unit> {
+        record("uploadReceipt"); lastReceiptUpload = expenseId to jpeg; return uploadReceipt.invoke(expenseId, jpeg)
+    }
+
+    override suspend fun deleteReceipt(expenseId: String): Response<Unit> {
+        record("deleteReceipt"); return deleteReceipt.invoke(expenseId)
+    }
+
+    override fun receiptUrl(expenseId: String, thumbnail: Boolean): String =
+        "https://test/expense/$expenseId/receipt?size=${if (thumbnail) "thumb" else "full"}"
 
     /** Requests made by one full AppDataStore refresh. */
     fun storeLoadCount(): Int = callCount("getDashboardStat")

@@ -1,6 +1,8 @@
 package com.example.splitease.ui.screens
 
 
+import com.example.splitease.ui.formatAmount
+import com.example.splitease.ui.rupees
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -33,6 +35,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -357,7 +360,7 @@ fun DashboardStatsList(
             StatCard(
                 cardHeading = "Total Expenses",
                 cardIcon = R.drawable.rupee_96,
-                cardData = "₹ ${dashboardStats?.totalUserExpense?:0.0}",
+                cardData = rupees(dashboardStats?.totalUserExpense ?: 0.0),
                 cardDescription = "Across All Groups",
                 modifier = Modifier.weight(1f)
             )
@@ -377,7 +380,7 @@ fun DashboardStatsList(
             StatCard(
                 cardHeading = "You Owe",
                 cardIcon = R.drawable.decrease_96,
-                cardData = "₹ ${dashboardStats?.amountUserOwes?:0.0}",
+                cardData = rupees(dashboardStats?.amountUserOwes ?: 0.0),
                 cardDescription = "To Settle",
                 cardColor = MaterialTheme.colorScheme.errorContainer,
                 cardDataColor = MaterialTheme.colorScheme.onErrorContainer,
@@ -386,7 +389,7 @@ fun DashboardStatsList(
             StatCard(
                 cardHeading = "You Are Owed",
                 cardIcon = R.drawable.increase_96,
-                cardData = "₹ ${dashboardStats?.amountOwedToUser?:0.0}",
+                cardData = rupees(dashboardStats?.amountOwedToUser ?: 0.0),
                 cardDescription = "Across All Groups",
                 cardColor = MaterialTheme.colorScheme.secondaryContainer,
                 cardDataColor = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -691,12 +694,12 @@ fun RecentExpensesCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "₹$amount",
+                        text = rupees(amount),
                         fontSize = 20.sp
                     )
                     Spacer(modifier = Modifier.padding(4.dp))
                     Text(
-                        text = "₹$userSplit per person",
+                        text = "Your share ${rupees(userSplit)}",
                         fontSize = 16.sp,
                         color = Color.Gray
                     )
@@ -851,7 +854,7 @@ fun ActiveGroupsCard(
                             modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding))
                         )
                         Text(
-                            text = "₹$totalExpense",
+                            text = rupees(totalExpense),
                             fontWeight = FontWeight.Bold,
                             fontSize = 20.sp,
                             modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding))
@@ -881,7 +884,7 @@ fun ActiveGroupsCard(
                             modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding))
                         )
                         Text(
-                            text = "₹$userShare",
+                            text = rupees(userShare),
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding))
@@ -1081,6 +1084,7 @@ fun AddExpensePopUp(
 ){
     var expanded by remember { mutableStateOf(false) }
     var selectedGroup by remember {  mutableStateOf<UserGroupResponse?>(null) }
+    val billPickers = rememberBillPhotoPickers(onPicked = addExpenseViewModel::attachBill)
 
     Card(
         colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -1178,6 +1182,14 @@ fun AddExpensePopUp(
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding)))
+            BillAttachmentSection(
+                addExpenseUiState = addExpenseUiState,
+                onTakePhoto = billPickers.takePhoto,
+                onChoosePhoto = billPickers.choosePhoto,
+                onRemove = addExpenseViewModel::removeBill,
+                onUseDetectedAmount = addExpenseViewModel::useDetectedAmount
             )
             Spacer(modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding)))
             Text(
@@ -1359,7 +1371,7 @@ fun SplitEditor(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(text = member.name, fontSize = 16.sp)
                     Text(
-                        text = "₹%.2f".format(addExpenseUiState.previewShare(member.userId)),
+                        text = rupees(addExpenseUiState.previewShare(member.userId)),
                         color = Color.Gray,
                         fontSize = 13.sp
                     )
@@ -1386,7 +1398,7 @@ fun SplitEditor(
         val summary = when (splitMode) {
             SplitMode.EXACT -> {
                 val remaining = (addExpenseUiState.amount.toDoubleOrNull() ?: 0.0) - total
-                "₹%.2f assigned · ₹%.2f left".format(total, remaining)
+                "${rupees(total)} assigned · ${rupees(remaining)} left"
             }
             SplitMode.PERCENTAGE -> "%.2f%% assigned · %.2f%% left".format(total, 100 - total)
             else -> null
@@ -1478,6 +1490,14 @@ fun SettleUpPopUp(
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(modifier = Modifier.padding(dimensionResource(R.dimen.mediumPadding)))
+            // With nothing owed the dropdown would open as an empty sliver, so show a message instead
+            if (settlements.isEmpty()) {
+                NoSettlementsPending(
+                    isLoading = settlementViewModel.isRefreshing,
+                    onClose = onClose
+                )
+                return@Column
+            }
             Text(
                 text = "Select debt to settle",
                 fontSize = 16.sp,
@@ -1509,7 +1529,7 @@ fun SettleUpPopUp(
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     Text(
-                                        text = "${selectedDebt?.toUserName} - ₹${selectedDebt?.amount}",
+                                        text = "${selectedDebt?.toUserName} - ${rupees(selectedDebt?.amount ?: 0.0)}",
                                         fontWeight = FontWeight.Bold
                                     )
                                 }
@@ -1556,7 +1576,7 @@ fun SettleUpPopUp(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(
-                                        text = "${debt.toUserName} - ₹${debt.amount}",
+                                        text = "${debt.toUserName} - ${rupees(debt.amount)}",
                                         fontWeight = FontWeight.Bold
                                     )
                                 }
@@ -1577,7 +1597,7 @@ fun SettleUpPopUp(
                 modifier = Modifier.fillMaxWidth()
             )
             OutlinedTextField(
-                value = if(selectedDebt==null) "0.00" else selectedDebt?.amount.toString(),
+                value = formatAmount(selectedDebt?.amount ?: 0.0),
                 onValueChange = { },
                 shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),
                 singleLine = true,
@@ -1644,6 +1664,58 @@ fun SettleUpPopUp(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun NoSettlementsPending(
+    isLoading: Boolean,
+    onClose: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xFFF5F5F5), RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)))
+            .padding(vertical = 32.dp, horizontal = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.smallPadding))
+    ) {
+        if (isLoading) {
+            CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(32.dp))
+            Text(text = "Checking what you owe…", color = Color.Gray)
+        } else {
+            Icon(
+                painter = painterResource(R.drawable.done_96),
+                contentDescription = null,
+                tint = Color(0xFF2E7D32),
+                modifier = Modifier.size(40.dp)
+            )
+            Text(
+                text = "No settlements pending",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Medium
+            )
+            Text(
+                text = "You don't owe anyone right now.",
+                color = Color.Gray,
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+    Spacer(modifier = Modifier.padding(dimensionResource(R.dimen.smallPadding)))
+    ElevatedButton(
+        onClick = onClose,
+        shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),
+        modifier = Modifier.fillMaxWidth(),
+        border = BorderStroke(1.dp, Color.Gray),
+        elevation = ButtonDefaults.elevatedButtonElevation(),
+        colors = ButtonDefaults.elevatedButtonColors(Color.White)
+    ){
+        Text(
+            text = "Close",
+            fontSize = 16.sp,
+            color = Color.Black
+        )
     }
 }
 

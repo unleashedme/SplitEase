@@ -2,6 +2,7 @@ package com.example.splitease.requestAndResponse;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.UUID;
 
 public record ExpenseDTO(
         String description,
@@ -12,5 +13,7 @@ public record ExpenseDTO(
         BigDecimal splitPerPerson, // Null when the expense was not split equally
         String splitType,
         BigDecimal userShare,
-        List<ExpenseShareDTO> shares
+        List<ExpenseShareDTO> shares,
+        UUID expenseId,
+        boolean hasReceipt
 ) {}

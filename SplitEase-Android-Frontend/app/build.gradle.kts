@@ -83,6 +83,10 @@ dependencies {
     implementation("androidx.datastore:datastore-preferences:1.1.0")
     // -------------------- Image Loading --------------------
     implementation("io.coil-kt:coil-compose:2.4.0")
+
+    // Reads the total off bill photos on the device
+    implementation("com.google.mlkit:text-recognition:16.0.1")
+    implementation("androidx.exifinterface:exifinterface:1.3.7")
     // -------------------- Charts / Analytics --------------------
     implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
 

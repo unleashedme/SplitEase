@@ -43,7 +43,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.splitease.R
+import com.example.splitease.ui.rupees
 import com.example.splitease.ui.model.ActivityExpenseDto
+import com.example.splitease.ui.model.SplitShareDto
 import com.example.splitease.ui.navigation.NavigationDestination
 import com.example.splitease.viewmodel.ActivityViewModel
 
@@ -89,6 +91,22 @@ fun ExpenseDetailsScreen(
                         },
                         navigateBack = navigateBack,
                         expense = expense,
+                        modifier = Modifier
+                            .padding(dimensionResource(R.dimen.smallPadding))
+                    )
+                }
+            }
+            item {
+                if(expense!=null){
+                    BillPhotoCard(
+                        hasReceipt = expense.hasReceipt,
+                        canEdit = expense.userWasPayer,
+                        isBusy = activityViewModel.billChangeInProgressFor == expenseId,
+                        thumbnailUrl = activityViewModel.receiptUrl(expenseId, thumbnail = true),
+                        fullUrl = activityViewModel.receiptUrl(expenseId, thumbnail = false),
+                        cacheVersion = activityViewModel.billRevision,
+                        onPicked = { uri -> activityViewModel.attachBill(expenseId, uri) },
+                        onRemove = { activityViewModel.removeBill(expenseId) },
                         modifier = Modifier
                             .padding(dimensionResource(R.dimen.smallPadding))
                     )
@@ -229,7 +247,7 @@ fun ExpenseDetailCard(
                             color = Color.DarkGray
                         )
                         Text(
-                            text = "₹ ${expense.amount}",
+                            text = rupees(expense.amount),
                             fontSize = 24.sp,
                             color = Color.Black
                         )
@@ -244,7 +262,8 @@ fun ExpenseDetailCard(
                             color = Color.DarkGray
                         )
                         Text(
-                            text = expense.owesToName ?: "You",
+                            // owesToName is empty once the user has settled, so it can't tell who paid
+                            text = if (expense.userWasPayer) "You" else expense.payerName ?: expense.owesToName ?: "-",
                             fontSize = 24.sp,
                             color = Color.Black
                         )
@@ -288,6 +307,18 @@ fun SplitDetailCard(
     expense: ActivityExpenseDto,
     modifier: Modifier = Modifier
 ){
+    // A payer who isn't sharing the cost still gets a row, showing what they paid
+    val rows = if (expense.shares.isEmpty() || expense.shares.any { it.isPayer }) expense.shares
+    else listOf(
+        SplitShareDto(
+            name = expense.payerName ?: "Payer",
+            amount = 0.0,
+            isPayer = true,
+            isCurrentUser = expense.userWasPayer,
+            isSettled = true
+        )
+    ) + expense.shares
+
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(Color.White),
@@ -309,39 +340,29 @@ fun SplitDetailCard(
                 modifier = Modifier.fillMaxWidth()
             )
             Text(
-                text = "How this expense is divided among members.",
+                text = splitDescription(expense.splitType, expense.shares.size),
                 color = Color.Gray,
                 textAlign = TextAlign.Start,
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(modifier = Modifier.padding(dimensionResource(R.dimen.mediumPadding)))
-            SplitCard(
-                name = "You",
-                expense = expense,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(dimensionResource(R.dimen.smallPadding))
-            )
-            if(expense.owesToName!=null){
-                SplitCard(
-                    name = expense.owesToName,
-                    expense = expense,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(dimensionResource(R.dimen.smallPadding))
+            if (rows.isEmpty()) {
+                Text(
+                    text = "Pull down on the Activity screen to load who owes what.",
+                    color = Color.Gray
                 )
             }
-            else{
+            rows.forEach { share ->
                 SplitCard(
-                    name = "Others",
-                    expense = expense,
+                    share = share,
+                    expenseAmount = expense.amount,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(dimensionResource(R.dimen.smallPadding))
                 )
             }
             Card(
-                modifier = modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(Color.White),
                 shape = RoundedCornerShape(dimensionResource(R.dimen.mediumCornerRoundedness)),
                 border = BorderStroke(width = 0.2.dp, color = Color.Gray)
@@ -354,23 +375,15 @@ fun SplitDetailCard(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ){
-                    Column {
+                    Text(
+                        text = "Total",
+                        fontSize = 20.sp
+                    )
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(text = rupees(expense.amount))
                         Text(
-                            text = "Total",
-                            fontSize = 20.sp
-                        )
-                    }
-                    Column {
-                        Text(
-                            text = "₹${expense.amount}",
-                            textAlign = TextAlign.End,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        Text(
-                            text = "~ ₹${expense.userShare} each",
-                            color = MaterialTheme.colorScheme.onSecondaryContainer,
-                            textAlign = TextAlign.End,
-                            modifier = Modifier.fillMaxWidth()
+                            text = "Your share ${rupees(expense.userShare)}",
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                     }
                 }
@@ -379,10 +392,17 @@ fun SplitDetailCard(
     }
 }
 
+private fun splitDescription(splitType: String, people: Int): String = when (splitType) {
+    "EXACT" -> "Split by exact amounts."
+    "PERCENTAGE" -> "Split by percentage."
+    "SHARES" -> "Split by shares."
+    else -> if (people > 0) "Split equally between $people ${if (people == 1) "person" else "people"}." else "Split equally."
+}
+
 @Composable
 fun SplitCard(
-    name: String,
-    expense: ActivityExpenseDto,
+    share: SplitShareDto,
+    expenseAmount: Double,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -400,40 +420,35 @@ fun SplitCard(
                 .spacedBy(dimensionResource(R.dimen.mediumPadding))
         ) {
             UserAvatar(
-                name = name
+                name = share.name
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ){
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = name,
+                        text = if (share.isCurrentUser) "You" else share.name,
                         fontSize = 20.sp
                     )
                     Text(
-                        text = "Share: ₹${expense.userShare}"
+                        text = "Share: ${rupees(share.amount)}"
                     )
                 }
-                Column {
-                    if(name == "Others" || (!expense.userWasPayer && name == "You")){
-                        Text(
-                            text = "Owes ₹${expense.userShare}",
+                Column(horizontalAlignment = Alignment.End) {
+                    when {
+                        share.isPayer -> {
+                            Text(text = "Paid ${rupees(expenseAmount)}")
+                            Text(
+                                text = "Gets back ${rupees(expenseAmount - share.amount)}",
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
+                        share.isSettled -> Text(text = "Settled", color = Color.Gray)
+                        else -> Text(
+                            text = "Owes ${rupees(share.amount)}",
                             color = MaterialTheme.colorScheme.error
-                        )
-                    }
-                    else {
-                        Text(
-                            text = "Paid: ₹${expense.amount}",
-                            textAlign = TextAlign.End,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        Text(
-                            text = "Gets back: ₹ ${expense.amount - expense.userShare}",
-                            color = MaterialTheme.colorScheme.onSecondaryContainer,
-                            textAlign = TextAlign.End,
-                            modifier = Modifier.fillMaxWidth()
                         )
                     }
                 }

@@ -17,7 +17,7 @@ interface AppContainer{
 
 class DefaultAppContainer(authStore: AuthStore): AppContainer {
 
-    private val baseUrl = "https://splitease-production-ff4f.up.railway.app/"
+    private val baseUrl = "https://awake-delight-production-43f7.up.railway.app"
 //        "http://10.0.2.2:8080/"
 
     private val moshi = Moshi.Builder()
@@ -39,7 +39,7 @@ class DefaultAppContainer(authStore: AuthStore): AppContainer {
     }
 
     override val repository: Repository by lazy{
-        NetworkRepository(retrofitService)
+        NetworkRepository(retrofitService, retrofit.baseUrl())
     }
 
     override val dataStore: AppDataStore by lazy{

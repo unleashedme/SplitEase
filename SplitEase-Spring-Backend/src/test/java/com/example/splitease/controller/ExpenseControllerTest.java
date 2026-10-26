@@ -15,10 +15,13 @@ import java.util.UUID;
 import static com.example.splitease.controller.ControllerTestSupport.ALICE;
 import static com.example.splitease.controller.ControllerTestSupport.mvc;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @ExtendWith(MockitoExtension.class)
@@ -31,11 +34,14 @@ class ExpenseControllerTest {
     @Test
     void addExpenseDelegatesToServiceWithPrincipal() throws Exception {
         UUID groupId = UUID.randomUUID();
+        UUID expenseId = UUID.randomUUID();
+        when(expenseService.addExpense(any(), eq("alice@test.com"))).thenReturn(expenseId);
 
         mvc(expenseController).perform(post("/expense").principal(ALICE)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"groupId\":\"" + groupId + "\",\"amount\":120.50,\"description\":\"Fuel\"}"))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.expenseId").value(expenseId.toString()));
 
         ArgumentCaptor<AddExpenseRequest> captor = ArgumentCaptor.forClass(AddExpenseRequest.class);
         verify(expenseService).addExpense(captor.capture(), eq("alice@test.com"));

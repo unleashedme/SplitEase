@@ -5,6 +5,7 @@ import com.example.splitease.dto.GroupDto
 import com.example.splitease.dto.SettlementDto
 import com.example.splitease.dto.UserDto
 import com.example.splitease.ui.model.ActivitySummaryDto
+import com.example.splitease.ui.model.AddExpenseResponse
 import com.example.splitease.ui.model.CreateGroupResponse
 import com.example.splitease.ui.model.DashboardStatResponse
 import com.example.splitease.ui.model.GroupScreenDataResponse
@@ -12,12 +13,15 @@ import com.example.splitease.ui.model.LogInRequests
 import com.example.splitease.ui.model.LogInResponse
 import com.example.splitease.ui.model.SettlementSummary
 import com.example.splitease.ui.model.UserGroupResponse
+import okhttp3.MultipartBody
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.Multipart
 import retrofit2.http.POST
 import retrofit2.http.PUT
+import retrofit2.http.Part
 import retrofit2.http.Path
 import retrofit2.http.Query
 
@@ -33,7 +37,14 @@ interface ApiService {
     suspend fun createGroup(@Body group : GroupDto): Response<CreateGroupResponse>
 
     @POST("expense")
-    suspend fun addExpense(@Body expense : ExpenseDto): Response<Unit>
+    suspend fun addExpense(@Body expense : ExpenseDto): Response<AddExpenseResponse>
+
+    @Multipart
+    @POST("expense/{id}/receipt")
+    suspend fun uploadReceipt(@Path("id") expenseId: String, @Part file: MultipartBody.Part): Response<Unit>
+
+    @DELETE("expense/{id}/receipt")
+    suspend fun deleteReceipt(@Path("id") expenseId: String): Response<Unit>
 
 
     @GET("myGroups")

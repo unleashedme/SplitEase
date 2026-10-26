@@ -1,9 +1,11 @@
 package com.example.splitease.service;
 
 import com.example.splitease.models.*;
+import com.example.splitease.repo.ExpenseReceiptRepo;
 import com.example.splitease.repo.ExpenseRepo;
 import com.example.splitease.requestAndResponse.ActivityDashboardResponse;
 import com.example.splitease.requestAndResponse.ExpenseActivityDTO;
+import com.example.splitease.requestAndResponse.SplitShareDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -11,6 +13,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import static com.example.splitease.TestData.*;
@@ -22,6 +25,9 @@ class ActivityServiceTest {
 
     @Mock
     private ExpenseRepo expenseRepo;
+
+    @Mock
+    private ExpenseReceiptRepo expenseReceiptRepo;
 
     @InjectMocks
     private ActivityService activityService;
@@ -104,6 +110,36 @@ class ActivityServiceTest {
         assertThat(dto.owesToName()).isEqualTo("Alice");
         assertThat(res.expensesPaidByUser()).isZero();
         assertThat(res.totalSpentCombined()).isEqualByComparingTo("50.00");
+    }
+
+    @Test
+    void listsEveryonesShareWithPayerFirst() {
+        Users carol = user("Carol", "carol@test.com");
+        Expenses dinner = expense(trip, bob, "100.00", "Dinner");
+        dinner.setSplitType(SplitType.EXACT);
+        split(dinner, carol, "30.00", true);
+        split(dinner, alice, "50.00", false);
+        split(dinner, bob, "20.00", true);
+        when(expenseRepo.findAllActivityForUser("alice@test.com")).thenReturn(List.of(dinner));
+
+        ExpenseActivityDTO dto = activityService.getUserActivity("alice@test.com").expenseHistory().get(0);
+
+        assertThat(dto.payerName()).isEqualTo("Bob");
+        assertThat(dto.splitType()).isEqualTo("EXACT");
+        assertThat(dto.shares()).containsExactly(
+                new SplitShareDTO("Bob", new BigDecimal("20.00"), true, false, true),
+                new SplitShareDTO("Alice", new BigDecimal("50.00"), false, true, false),
+                new SplitShareDTO("Carol", new BigDecimal("30.00"), false, false, true)
+        );
+    }
+
+    @Test
+    void expensesFromBeforeCustomSplitsCountAsEqual() {
+        Expenses dinner = expense(trip, alice, "100.00", "Dinner");
+        split(dinner, alice, "50.00", true);
+        when(expenseRepo.findAllActivityForUser("alice@test.com")).thenReturn(List.of(dinner));
+
+        assertThat(activityService.getUserActivity("alice@test.com").expenseHistory().get(0).splitType()).isEqualTo("EQUAL");
     }
 
     @Test

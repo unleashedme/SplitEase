@@ -39,7 +39,7 @@ public class ExpenseService {
     @Autowired
     private NotificationService notificationService;
 
-    public void addExpense(AddExpenseRequest request, String payerEmail) {
+    public UUID addExpense(AddExpenseRequest request, String payerEmail) {
 
         if (request.getAmount() == null || request.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Amount must be greater than zero");
@@ -106,6 +106,7 @@ public class ExpenseService {
             }
         }
 
+        return expense.getId();
     }
 
     /**
