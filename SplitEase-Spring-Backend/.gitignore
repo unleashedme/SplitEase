@@ -31,3 +31,7 @@ build/
 
 ### VS Code ###
 .vscode/
+app/release/
+google-services.json
+service-account.json
+.idea/
