@@ -48,20 +48,6 @@ public interface ExpenseSplitRepo extends JpaRepository<ExpenseSplits, UUID> {
     void deleteByExpenseId(@Param("expenseId") UUID expenseId);
 
 
-    @Query("SELECT " +
-            "CASE WHEN e.payer.id = :userId THEN s.user.id ELSE e.payer.id END, " +
-            "CASE WHEN e.payer.id = :userId THEN s.user.name ELSE e.payer.name END, " +
-            "SUM(CASE WHEN s.user.id = :userId THEN s.shareAmount ELSE 0 END) - " +
-            "SUM(CASE WHEN e.payer.id = :userId THEN s.shareAmount ELSE 0 END) " +
-            "FROM ExpenseSplits s JOIN s.expense e " +
-            "WHERE (e.payer.id = :userId OR s.user.id = :userId) " +
-            "AND s.settled = false " +
-            "GROUP BY 1, 2")
-    List<Object[]> calculateNetBalances(@Param("userId") UUID userId);
-
-    @Query("SELECT s FROM ExpenseSplits s WHERE s.settled = false AND (" +
-            "(s.user.id = :id1 AND s.expense.payer.id = :id2) OR " +
-            "(s.user.id = :id2 AND s.expense.payer.id = :id1)" +
-            ")")
-    List<ExpenseSplits> findAllUnsettledBetweenUsers(UUID id1, UUID id2);
+    // What's still outstanding in a group; settlement balances are worked out from these
+    List<ExpenseSplits> findByExpenseGroupAndSettledFalse(Groups group);
 }

@@ -1,6 +1,8 @@
 package com.example.splitease.models;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -24,6 +26,18 @@ public class Settlements {
 
     private BigDecimal amount;
     private String note;
+
+    // The group whose balance this payment counts towards. Null for payments recorded before
+    // debts were simplified per group; those already marked their splits settled.
+    @ManyToOne
+    @JoinColumn(name = "group_id")
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    private Groups group;
+
+    // True once the group's balances reached zero and its splits were marked settled,
+    // after which this payment no longer counts towards the group's balance
+    @Column(name = "cleared")
+    private Boolean cleared;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
@@ -66,6 +80,22 @@ public class Settlements {
 
     public void setFromUser(Users fromUser) {
         this.fromUser = fromUser;
+    }
+
+    public Groups getGroup() {
+        return group;
+    }
+
+    public void setGroup(Groups group) {
+        this.group = group;
+    }
+
+    public Boolean getCleared() {
+        return cleared;
+    }
+
+    public void setCleared(Boolean cleared) {
+        this.cleared = cleared;
     }
 
     public UUID getId() {

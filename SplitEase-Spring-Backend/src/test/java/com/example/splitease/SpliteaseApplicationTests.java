@@ -128,6 +128,65 @@ class SpliteaseApplicationTests {
 	}
 
 	@Test
+	void simplifiedDebtsFlow() throws Exception {
+		register("Fay", "fay@flow.com", "300");
+		register("Gus", "gus@flow.com", "301");
+		register("Hal", "hal@flow.com", "302");
+		String fay = login("Fay", "fay@flow.com");
+		String gus = login("Gus", "gus@flow.com");
+		String hal = login("Hal", "hal@flow.com");
+
+		String created = mvc.perform(post("/group").header("Authorization", fay).contentType(MediaType.APPLICATION_JSON)
+						.content("{\"name\":\"Roadtrip\",\"members\":[\"gus@flow.com\",\"hal@flow.com\"]}"))
+				.andReturn().getResponse().getContentAsString();
+		String groupId = JsonPath.read(created, "$.groupId");
+		String members = mvc.perform(get("/myGroups").header("Authorization", fay))
+				.andReturn().getResponse().getContentAsString();
+		String gusId = JsonPath.<java.util.List<String>>read(members, "$[0].members[?(@.name == 'Gus')].userId").get(0);
+		String halId = JsonPath.<java.util.List<String>>read(members, "$[0].members[?(@.name == 'Hal')].userId").get(0);
+
+		// Fay pays fuel for Gus, Gus pays tolls for Hal: Gus is only passing money along
+		mvc.perform(post("/expense").header("Authorization", fay).contentType(MediaType.APPLICATION_JSON)
+						.content("{\"groupId\":\"" + groupId + "\",\"amount\":40.00,\"description\":\"Fuel\"," +
+								"\"splitType\":\"EXACT\",\"splits\":[{\"userId\":\"" + gusId + "\",\"value\":40.00}]}"))
+				.andExpect(status().isOk());
+		mvc.perform(post("/expense").header("Authorization", gus).contentType(MediaType.APPLICATION_JSON)
+						.content("{\"groupId\":\"" + groupId + "\",\"amount\":40.00,\"description\":\"Tolls\"," +
+								"\"splitType\":\"EXACT\",\"splits\":[{\"userId\":\"" + halId + "\",\"value\":40.00}]}"))
+				.andExpect(status().isOk());
+
+		mvc.perform(get("/settlements/payables").header("Authorization", gus))
+				.andExpect(jsonPath("$").isEmpty());
+		mvc.perform(get("/settlements/payables").header("Authorization", hal))
+				.andExpect(jsonPath("$.length()").value(1))
+				.andExpect(jsonPath("$[0].toUserName").value("Fay"))
+				.andExpect(jsonPath("$[0].amount").value(40.0));
+		mvc.perform(get("/dashboard").header("Authorization", gus))
+				.andExpect(jsonPath("$.amountUserOwes").value(0))
+				.andExpect(jsonPath("$.amountOwedToUser").value(0));
+		mvc.perform(get("/dashboard").header("Authorization", fay))
+				.andExpect(jsonPath("$.amountOwedToUser").value(40.0));
+
+		// Paying a stale amount is refused
+		String fayId = JsonPath.read(mvc.perform(get("/settlements/payables").header("Authorization", hal))
+				.andReturn().getResponse().getContentAsString(), "$[0].toUserId");
+		mvc.perform(post("/settlements").header("Authorization", hal).contentType(MediaType.APPLICATION_JSON)
+						.content("{\"toUserId\":\"" + fayId + "\",\"amount\":10.00}"))
+				.andExpect(status().isConflict());
+
+		mvc.perform(post("/settlements").header("Authorization", hal).contentType(MediaType.APPLICATION_JSON)
+						.content("{\"toUserId\":\"" + fayId + "\",\"amount\":40.00,\"note\":\"cash\"}"))
+				.andExpect(status().isOk());
+
+		mvc.perform(get("/settlements/payables").header("Authorization", hal))
+				.andExpect(jsonPath("$").isEmpty());
+		mvc.perform(get("/group").header("Authorization", fay))
+				.andExpect(jsonPath("$.activeGroupsCount").value(0));
+		mvc.perform(get("/activity").header("Authorization", gus))
+				.andExpect(jsonPath("$.expenseHistory[*].isSettled", org.hamcrest.Matchers.everyItem(org.hamcrest.Matchers.is(true))));
+	}
+
+	@Test
 	void billPhotoFlow() throws Exception {
 		register("Cat", "cat@flow.com", "200");
 		register("Dan", "dan@flow.com", "201");

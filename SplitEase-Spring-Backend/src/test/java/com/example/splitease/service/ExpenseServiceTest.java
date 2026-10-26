@@ -38,6 +38,7 @@ class ExpenseServiceTest {
     @Mock private ExpenseSplitRepo expenseSplitRepo;
     @Mock private UserRepo userRepo;
     @Mock private NotificationService notificationService;
+    @Mock private SettlementService settlementService;
 
     @InjectMocks
     private ExpenseService expenseService;
