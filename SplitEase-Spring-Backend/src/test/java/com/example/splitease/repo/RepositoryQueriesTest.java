@@ -11,9 +11,7 @@ import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabas
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -29,6 +27,7 @@ class RepositoryQueriesTest {
     @Autowired private ExpenseRepo expenseRepo;
     @Autowired private ExpenseSplitRepo expenseSplitRepo;
     @Autowired private ExpenseReceiptRepo expenseReceiptRepo;
+    @Autowired private SettlementRepo settlementRepo;
 
     private Users alice;
     private Users bob;
@@ -150,34 +149,44 @@ class RepositoryQueriesTest {
     }
 
     @Test
-    void calculateNetBalancesNetsDebtsInBothDirections() {
-        expense(alice, "90", "30", alice, bob, carol); // bob and carol each owe alice 30
-        expense(bob, "20", "10", alice, bob);          // alice owes bob 10
+    void outstandingSplitsOfAGroup() {
+        expense(alice, "90", "30", alice, bob, carol); // only alice's own split is settled
         flushAndClear();
 
-        Map<String, BigDecimal> forAlice = balances(alice);
-        // positive = alice owes them, negative = they owe alice
-        assertThat(forAlice).containsOnlyKeys(bob.getId().toString(), carol.getId().toString());
-        assertThat(forAlice.get(bob.getId().toString())).isEqualByComparingTo("-20");
-        assertThat(forAlice.get(carol.getId().toString())).isEqualByComparingTo("-30");
-
-        Map<String, BigDecimal> forBob = balances(bob);
-        assertThat(forBob).containsOnlyKeys(alice.getId().toString());
-        assertThat(forBob.get(alice.getId().toString())).isEqualByComparingTo("20");
+        assertThat(expenseSplitRepo.findByExpenseGroupAndSettledFalse(trip))
+                .extracting(s -> s.getUser().getName())
+                .containsExactlyInAnyOrder("Bob", "Carol");
     }
 
     @Test
-    void findAllUnsettledBetweenUsersCoversBothDirectionsOnly() {
-        expense(alice, "90", "30", alice, bob, carol);
-        expense(bob, "20", "10", alice, bob);
+    void openPaymentsOfAGroupExcludeClearedAndOldOnes() {
+        Settlements open = payment(bob, alice, "30", trip, null);
+        payment(carol, alice, "30", trip, true);   // cleared once the group was square
+        payment(carol, bob, "10", null, null);     // recorded before payments belonged to a group
         flushAndClear();
 
-        List<ExpenseSplits> between = expenseSplitRepo.findAllUnsettledBetweenUsers(alice.getId(), bob.getId());
+        assertThat(settlementRepo.findOpenByGroup(trip)).extracting(Settlements::getId).containsExactly(open.getId());
+    }
 
-        assertThat(between).hasSize(2)
-                .allSatisfy(s -> assertThat(s.getSettled()).isFalse())
-                .extracting(s -> s.getUser().getName())
-                .containsExactlyInAnyOrder("Bob", "Alice");
+    @Test
+    void deletingGroupRemovesItsPayments() {
+        payment(bob, alice, "30", trip, null);
+        flushAndClear();
+
+        groupRepo.delete(groupRepo.findById(trip.getId()).orElseThrow());
+        flushAndClear();
+
+        assertThat(settlementRepo.findAll()).isEmpty();
+    }
+
+    private Settlements payment(Users from, Users to, String amount, Groups group, Boolean cleared) {
+        Settlements s = new Settlements();
+        s.setFromUser(from);
+        s.setToUser(to);
+        s.setAmount(new BigDecimal(amount));
+        s.setGroup(group);
+        s.setCleared(cleared);
+        return settlementRepo.save(s);
     }
 
     @Test
@@ -240,13 +249,5 @@ class RepositoryQueriesTest {
         groupRepo.delete(groupRepo.findById(trip.getId()).orElseThrow());
         flushAndClear();
         assertThat(expenseReceiptRepo.findAll()).isEmpty();
-    }
-
-    private Map<String, BigDecimal> balances(Users user) {
-        Map<String, BigDecimal> result = new HashMap<>();
-        for (Object[] row : expenseSplitRepo.calculateNetBalances(user.getId())) {
-            result.put(row[0].toString(), new BigDecimal(row[2].toString()));
-        }
-        return result;
     }
 }

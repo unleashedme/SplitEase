@@ -15,6 +15,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 import static com.example.splitease.TestData.*;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -28,6 +29,10 @@ class ActivityServiceTest {
 
     @Mock
     private ExpenseReceiptRepo expenseReceiptRepo;
+
+    // Returns no balances unless a test sets them, so "settled" comes from the split flags alone
+    @Mock
+    private SettlementService settlementService;
 
     @InjectMocks
     private ActivityService activityService;
@@ -93,6 +98,29 @@ class ActivityServiceTest {
 
         assertThat(res.settledExpensesCount()).isEqualTo(1);
         assertThat(res.expenseHistory().get(0).isSettled()).isTrue();
+    }
+
+    @Test
+    void participantWhoIsSquareInTheGroupCountsAsSettled() {
+        // Bob's split is still open, but he paid someone else in the group what the plan said
+        Expenses dinner = expense(trip, alice, "100.00", "Dinner");
+        split(dinner, alice, "50.00", true);
+        split(dinner, bob, "50.00", false);
+        when(expenseRepo.findAllActivityForUser("bob@test.com")).thenReturn(List.of(dinner));
+        when(settlementService.groupBalances(trip)).thenReturn(Map.of(
+                alice.getId(), new BigDecimal("30.00"),
+                bob.getId(), new BigDecimal("0.00")
+        ));
+
+        ExpenseActivityDTO dto = activityService.getUserActivity("bob@test.com").expenseHistory().get(0);
+
+        assertThat(dto.isSettled()).isTrue();
+        assertThat(dto.owesToName()).isNull();
+        assertThat(dto.shares()).filteredOn(SplitShareDTO::isCurrentUser)
+                .singleElement().satisfies(s -> assertThat(s.isSettled()).isTrue());
+        // Alice is still owed money in the group, so her side isn't settled
+        assertThat(dto.shares()).filteredOn(SplitShareDTO::isPayer).singleElement()
+                .satisfies(s -> assertThat(s.isSettled()).isTrue()); // her own share is marked settled
     }
 
     @Test

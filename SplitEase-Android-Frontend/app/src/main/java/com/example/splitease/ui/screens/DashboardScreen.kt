@@ -1484,7 +1484,7 @@ fun SettleUpPopUp(
                 )
             }
             Text(
-                text = "Record a payment to settle your balance.",
+                text = "Record a payment to settle your balance. Debts in each group are simplified, so you may pay someone other than who paid for you, in as few payments as possible.",
                 color = Color.Gray,
                 textAlign = TextAlign.Start,
                 modifier = Modifier.fillMaxWidth()

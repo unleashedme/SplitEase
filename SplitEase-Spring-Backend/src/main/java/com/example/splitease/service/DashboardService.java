@@ -26,7 +26,7 @@ public class DashboardService {
     private GroupMemberRepo groupMemberRepo;
 
     @Autowired
-    private ExpenseRepo expenseRepo;
+    private SettlementService settlementService;
 
     public DashboardSummaryDTO getDashboardSummary(String userEmail) {
 
@@ -40,37 +40,10 @@ public class DashboardService {
 
         if (groups.isEmpty()) return new DashboardSummaryDTO(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
 
-        // 2. Expenses of those groups
-        List<Expenses> expenses = expenseRepo.findByGroupIn(groups);
-
-        BigDecimal owes = BigDecimal.ZERO;
-        BigDecimal owedTo = BigDecimal.ZERO;
-
-        // 3. Process expenses
-        for (Expenses expense : expenses) {
-
-            boolean userIsPayer =
-                    expense.getPayer().getId().equals(user.getId());
-
-            for (ExpenseSplits split : expense.getSplits()) {
-
-                if (Boolean.TRUE.equals(split.getSettled())) continue;
-
-                // User paid → others owe user
-                if (userIsPayer &&
-                        !split.getUser().getId().equals(user.getId())) {
-
-                    owedTo = owedTo.add(split.getShareAmount());
-                }
-
-                // User didn't pay → user owes
-                if (!userIsPayer &&
-                        split.getUser().getId().equals(user.getId())) {
-
-                    owes = owes.add(split.getShareAmount());
-                }
-            }
-        }
+        // Same simplified debts as the Settle Up screen, so the two always agree
+        SettlementService.DebtTotals debts = settlementService.debtTotals(user);
+        BigDecimal owes = debts.owes();
+        BigDecimal owedTo = debts.owed();
 
         // calculate Total Expenses (Lifetime consumption from splits)
         List<ExpenseSplits> userSplits = expenseSplitRepo.findAllByUserEmail(userEmail);

@@ -220,4 +220,22 @@ class ChangeRequestViewModelsTest {
         assertEquals(listOf("Couldn't record payment: check your internet connection"), outcome.toasts)
         assertEquals(1, repository.storeLoadCount())
     }
+
+    @Test
+    fun recordPaymentWithStaleAmountReloadsWhatIsOwed() = runTest(mainRule.dispatcher) {
+        repository.recordSettlement = {
+            throw Fixtures.httpException(409, "Balances have changed: you now owe Ravi ₹300.00. Refresh and try again.")
+        }
+        val viewModel = SettlementViewModel(repository, store)
+        advanceUntilIdle()
+
+        val outcome = perform { viewModel.recordPayment("u-ravi", 250.0, "", it) }
+
+        assertFalse(outcome.succeeded)
+        assertEquals(
+            listOf("Couldn't record payment: Balances have changed: you now owe Ravi ₹300.00. Refresh and try again."),
+            outcome.toasts
+        )
+        assertEquals("reloaded so the dialog shows the new amount", 2, repository.storeLoadCount())
+    }
 }

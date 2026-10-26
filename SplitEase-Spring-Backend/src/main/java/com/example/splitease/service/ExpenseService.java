@@ -39,6 +39,9 @@ public class ExpenseService {
     @Autowired
     private NotificationService notificationService;
 
+    @Autowired
+    private SettlementService settlementService;
+
     public UUID addExpense(AddExpenseRequest request, String payerEmail) {
 
         if (request.getAmount() == null || request.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
@@ -88,6 +91,7 @@ public class ExpenseService {
 
             expenseSplitRepo.save(split);
         }
+        settlementService.clearIfSettled(group);
 
         for (GroupMembers member : members) {
             Users userToNotify = member.getUser();
@@ -213,6 +217,7 @@ public class ExpenseService {
         }
 
         expenseRepo.delete(expense); // splits will be deleted automatically
+        settlementService.clearIfSettled(expense.getGroup());
         System.out.println("expense Deleted");
     }
 

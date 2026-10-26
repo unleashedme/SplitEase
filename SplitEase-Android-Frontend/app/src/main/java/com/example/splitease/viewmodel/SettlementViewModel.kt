@@ -17,6 +17,7 @@ import com.example.splitease.ui.AppApplication
 import com.example.splitease.ui.RequestToasts
 import com.example.splitease.ui.model.SettlementSummary
 import kotlinx.coroutines.launch
+import retrofit2.HttpException
 
 class SettlementViewModel(
     private val repository: Repository,
@@ -52,6 +53,8 @@ class SettlementViewModel(
             }catch (e: Exception){
                 println("Settlement: exception = ${e::class.java} ${e.message}")
                 RequestToasts.failure("Couldn't record payment", e)
+                // 409: someone changed the group's expenses since this screen loaded, so reload what's owed
+                if (e is HttpException && e.code() == 409) dataStore.refresh()
             }
         }
     }

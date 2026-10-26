@@ -24,21 +24,17 @@ class DashboardServiceTest {
     @Mock private GroupRepo groupRepository;
     @Mock private UserRepo userRepo;
     @Mock private GroupMemberRepo groupMemberRepo;
-    @Mock private ExpenseRepo expenseRepo;
+    @Mock private SettlementService settlementService;
 
     @InjectMocks
     private DashboardService dashboardService;
 
     private Users alice;
-    private Users bob;
-    private Users carol;
     private Groups trip;
 
     @BeforeEach
     void setUp() {
         alice = user("Alice", "alice@test.com");
-        bob = user("Bob", "bob@test.com");
-        carol = user("Carol", "carol@test.com");
         trip = group("Trip", alice);
         when(userRepo.findByEmail("alice@test.com")).thenReturn(alice);
     }
@@ -56,35 +52,28 @@ class DashboardServiceTest {
     }
 
     @Test
-    void computesOwedAndOwingFromUnsettledSplits() {
+    void owedAndOwingComeFromTheSimplifiedDebts() {
         when(groupMemberRepo.findByUser(alice)).thenReturn(List.of(member(trip, alice, "admin")));
-
-        // Alice paid 90 split 3 ways: Bob owes 30, Carol already paid
-        Expenses hotel = expense(trip, alice, "90.00", "Hotel");
-        ExpenseSplits aliceHotel = split(hotel, alice, "30.00", true);
-        split(hotel, bob, "30.00", false);
-        split(hotel, carol, "30.00", true);
-
-        // Bob paid 60 split 3 ways: Alice owes 20; Carol's debt to Bob is not Alice's concern
-        Expenses food = expense(trip, bob, "60.00", "Food");
-        ExpenseSplits aliceFood = split(food, alice, "20.00", false);
-        split(food, bob, "20.00", true);
-        split(food, carol, "20.00", false);
-
-        when(expenseRepo.findByGroupIn(List.of(trip))).thenReturn(List.of(hotel, food));
-        when(expenseSplitRepo.findAllByUserEmail("alice@test.com")).thenReturn(List.of(aliceHotel, aliceFood));
+        when(settlementService.debtTotals(alice))
+                .thenReturn(new SettlementService.DebtTotals(new BigDecimal("20.00"), new BigDecimal("30.00")));
+        ExpenseSplits hotel = new ExpenseSplits();
+        hotel.setShareAmount(new BigDecimal("30.00"));
+        ExpenseSplits food = new ExpenseSplits();
+        food.setShareAmount(new BigDecimal("20.00"));
+        when(expenseSplitRepo.findAllByUserEmail("alice@test.com")).thenReturn(List.of(hotel, food));
 
         DashboardSummaryDTO dto = dashboardService.getDashboardSummary("alice@test.com");
 
-        assertThat(dto.amountOwedToUser()).isEqualByComparingTo("30.00");
         assertThat(dto.amountUserOwes()).isEqualByComparingTo("20.00");
+        assertThat(dto.amountOwedToUser()).isEqualByComparingTo("30.00");
         assertThat(dto.totalUserExpense()).isEqualByComparingTo("50.00");
     }
 
     @Test
     void ignoresNullShareAmountsInTotal() {
         when(groupMemberRepo.findByUser(alice)).thenReturn(List.of(member(trip, alice, "admin")));
-        when(expenseRepo.findByGroupIn(List.of(trip))).thenReturn(List.of());
+        when(settlementService.debtTotals(alice))
+                .thenReturn(new SettlementService.DebtTotals(BigDecimal.ZERO, BigDecimal.ZERO));
         ExpenseSplits broken = new ExpenseSplits();
         ExpenseSplits ok = new ExpenseSplits();
         ok.setShareAmount(new BigDecimal("12.50"));
@@ -95,21 +84,5 @@ class DashboardServiceTest {
         assertThat(dto.totalUserExpense()).isEqualByComparingTo("12.50");
         assertThat(dto.amountOwedToUser()).isEqualByComparingTo("0");
         assertThat(dto.amountUserOwes()).isEqualByComparingTo("0");
-    }
-
-    @Test
-    void fullySettledExpensesContributeNothingToBalances() {
-        when(groupMemberRepo.findByUser(alice)).thenReturn(List.of(member(trip, alice, "admin")));
-        Expenses hotel = expense(trip, alice, "90.00", "Hotel");
-        ExpenseSplits aliceHotel = split(hotel, alice, "45.00", true);
-        split(hotel, bob, "45.00", true);
-        when(expenseRepo.findByGroupIn(List.of(trip))).thenReturn(List.of(hotel));
-        when(expenseSplitRepo.findAllByUserEmail("alice@test.com")).thenReturn(List.of(aliceHotel));
-
-        DashboardSummaryDTO dto = dashboardService.getDashboardSummary("alice@test.com");
-
-        assertThat(dto.amountOwedToUser()).isEqualByComparingTo("0");
-        assertThat(dto.amountUserOwes()).isEqualByComparingTo("0");
-        assertThat(dto.totalUserExpense()).isEqualByComparingTo("45.00");
     }
 }

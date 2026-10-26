@@ -20,7 +20,9 @@ import java.nio.file.AccessDeniedException;
 import java.security.Principal;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -36,6 +38,9 @@ public class ActivityService {
     @Autowired
     private ExpenseReceiptRepo expenseReceiptRepo;
 
+    @Autowired
+    private SettlementService settlementService;
+
     public ActivityDashboardResponse getUserActivity(String email) {
         // 1. Fetch only expenses where the user is a Group Member AND (Payer OR Participant)
         List<Expenses> expenses = expenseRepo.findAllActivityForUser(email);
@@ -47,9 +52,12 @@ public class ActivityService {
         List<ExpenseActivityDTO> history = new ArrayList<>();
         Set<UUID> expensesWithReceipt = expenses.isEmpty() ? Set.of()
                 : expenseReceiptRepo.findExpenseIdsWithReceipt(expenses.stream().map(Expenses::getId).toList());
+        Map<UUID, Map<UUID, BigDecimal>> balancesByGroup = new HashMap<>();
 
         for (Expenses exp : expenses) {
             boolean isPayer = exp.getPayer().getEmail().equals(email);
+            Map<UUID, BigDecimal> groupBalances = balancesByGroup.computeIfAbsent(
+                    exp.getGroup().getId(), id -> settlementService.groupBalances(exp.getGroup()));
 
             // 2. Find the current user's specific split in this expense
             // This is safe because the query ensured the user is involved
@@ -66,6 +74,12 @@ public class ActivityService {
                     .allMatch(s -> Boolean.TRUE.equals(s.getSettled()));
 
             boolean isSettledForUser = isPayer ? everyoneElsePaid : (mySplit != null && Boolean.TRUE.equals(mySplit.getSettled()));
+            // With simplified debts a payment covers the group, not single expenses
+            if (!isSettledForUser && mySplit != null) {
+                isSettledForUser = isSquare(groupBalances, mySplit.getUser().getId());
+            } else if (!isSettledForUser && isPayer) {
+                isSettledForUser = isSquare(groupBalances, exp.getPayer().getId());
+            }
 
             // 4. Update Stats
             if (isSettledForUser) settledCount++;
@@ -73,7 +87,7 @@ public class ActivityService {
             totalSpent = totalSpent.add(userShare);
 
             // 5. Determine "Owes To"
-            String owesTo = (!isPayer && mySplit != null && !Boolean.TRUE.equals(mySplit.getSettled()))
+            String owesTo = (!isPayer && mySplit != null && !isSettledForUser)
                     ? exp.getPayer().getName() : null;
 
             history.add(new ExpenseActivityDTO(
@@ -89,15 +103,21 @@ public class ActivityService {
                     expensesWithReceipt.contains(exp.getId()),
                     exp.getPayer().getName(),
                     (exp.getSplitType() == null ? SplitType.EQUAL : exp.getSplitType()).name(),
-                    shares(exp, email)
+                    shares(exp, email, groupBalances)
             ));
         }
 
         return new ActivityDashboardResponse(totalExpensesCount, totalSpent, paidCount, settledCount, history);
     }
 
+    // Only someone with outstanding activity in the group appears in its balances
+    private static boolean isSquare(Map<UUID, BigDecimal> groupBalances, UUID userId) {
+        BigDecimal balance = groupBalances.get(userId);
+        return balance != null && balance.signum() == 0;
+    }
+
     // Payer first, then everyone else by name
-    private static List<SplitShareDTO> shares(Expenses exp, String email) {
+    private static List<SplitShareDTO> shares(Expenses exp, String email, Map<UUID, BigDecimal> groupBalances) {
         return exp.getSplits().stream()
                 .sorted(Comparator
                         .comparing((ExpenseSplits s) -> !s.getUser().getId().equals(exp.getPayer().getId()))
@@ -107,7 +127,7 @@ public class ActivityService {
                         s.getShareAmount(),
                         s.getUser().getId().equals(exp.getPayer().getId()),
                         s.getUser().getEmail().equals(email),
-                        Boolean.TRUE.equals(s.getSettled())
+                        Boolean.TRUE.equals(s.getSettled()) || isSquare(groupBalances, s.getUser().getId())
                 ))
                 .toList();
     }
